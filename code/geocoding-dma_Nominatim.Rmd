@@ -1,0 +1,608 @@
+---
+title: "geocoding-dma"
+author: "Federico Vicentini"
+date: "2024-02-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Clear the variables
+rm(list = ls())
+
+# Set the working directory to source file location with
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+# Install packages
+packages <- c("ggplot2", "tidygeocoder", "progress", "readxl", "dplyr", "sf", "stringr", "openxlsx")
+new.packages <- packages[!(packages %in% installed.packages()[, "Package"])]
+if (length(new.packages)) install.packages(new.packages)
+invisible(lapply(packages, library, character.only = TRUE))
+
+# Load additional packages
+#library(ggmap)
+library(openxlsx)
+
+
+
+workdir <- dirname(getwd())
+
+datafolder <- paste0(workdir, "/Data")
+
+outputfolder <- paste0(workdir, "/Output")
+
+
+# Load the data
+edihservices <- read_excel(paste0(datafolder,"/clean-edih-services.xlsx"))
+
+dmadata <-  read_excel(paste0(datafolder,"/clean-raw-data-sme.xlsx"))
+
+# Merge the edihservices and dmadata
+datamerged <- merge(edihservices, dmadata, by="fiscal_code")
+
+# Filter out rows with missing addresses and names, and with fiscal codes equal to 0
+datamerged <- datamerged[!is.na(datamerged$address) & !is.na(datamerged$name) & datamerged$fiscal_code != 0, ]
+datamerged$fiscal_code <- as.character(datamerged$fiscal_code)
+
+# Filter out rows with missing addresses and names, and with fiscal codes equal to 0
+datamerged <- datamerged[!is.na(datamerged$address) & !is.na(datamerged$name), ]
+datamerged$fiscal_code <- as.character(datamerged$fiscal_code)
+datamerged <- datamerged[datamerged$fiscal_code != "0", ]
+
+
+# Read the geocoded data from the file
+geocoded_df <- read_excel(paste0(datafolder,"/clean_geocoded_dma_NOMINATIM.xlsx"))
+
+
+# Perform an anti-join to filter out the fiscal codes that are already present in the geocoded data
+fiscal_codes_to_geocode <- datamerged %>%
+  anti_join(geocoded_df, by = "fiscal_code") %>%
+  dplyr::select(fiscal_code, address)
+
+
+fiscal_codes_to_geocode <- fiscal_codes_to_geocode[fiscal_codes_to_geocode$fiscal_code != "​​63751003", ]
+
+# Merge the fiscal_codes_to_geocode and datamerged
+datamergedtogeocode <- merge(fiscal_codes_to_geocode, datamerged, by="fiscal_code")
+
+# Initialize a progress bar
+pb <- progress_bar$new(
+  format = "[:bar] :percent Elapsed: :elapsed ETA: :eta",
+  total = nrow(datamergedtogeocode)
+)
+
+# Initialize an empty dataframe for the geocoded results
+geocoded_results <- data.frame(address = character(), latitude = numeric(), longitude = numeric())
+
+# Iterate over each address and geocode using Nominatim
+for (i in 1:nrow(fiscal_codes_to_geocode)) {
+  address <- fiscal_codes_to_geocode$address[i]
+  fiscal_code <- fiscal_codes_to_geocode$fiscal_code[i]
+  
+  if (address != "" & !is.na(address)) {
+    result <- tidygeocoder::geo(address, method = 'osm', full_results = TRUE)
+    geocode_result <- data.frame(fiscal_code = fiscal_code, 
+                                 address = address, 
+                                 latitude = result$lat, 
+                                 longitude = result$long)
+  } else {
+    geocode_result <- data.frame(fiscal_code = fiscal_code, 
+                                 address = address, 
+                                 latitude = NA, 
+                                 longitude = NA)
+  }
+  
+  # Update the geocoded dataframe in real-time
+  geocoded_results <- rbind(geocoded_results, geocode_result)
+  
+  # Print progress or update a progress bar
+  pb$tick()
+  print(paste("Geocoded", i, "out of", nrow(fiscal_codes_to_geocode), "addresses"))
+}
+
+# Combine the geocoded results with the existing geocoded data
+geocoded_df <- bind_rows(geocoded_df, geocoded_results)
+
+# Combine the geocoded results into a single dataframe
+geocoded_df_new <- geocoded_results
+
+# Combine the geocoded results into a single dataframe
+# geocoded_df <- do.call(rbind, geocoded_results)
+
+# The geocoded_df dataframe now contains the geocoding results for all addresses
+write.xlsx(geocoded_df_new, file = paste0(datafolder,"/clean_geocoded_dma_new_NOMINATIM.xlsx"))
+
+write.xlsx(geocoded_df, file = paste0(datafolder,"/clean_geocoded_dma_NOMINATIM.xlsx"))
+
+
+#############################
+#############################
+
+# NOTE: we do not need a new geocoding for the edihs after all
+
+
+
+# Geocoding of the EDIHs
+
+varnames <- c("name", "title", "description", "country", "contact_name", "address", "contact_website", "type", "technologies", "sectors", "services")
+
+edihcatalog <- read_excel(paste0(datafolder,"/edih_download.xlsx"))
+names(edihcatalog) <- varnames
+edihcatalog <- edihcatalog[edihcatalog$type != "DIH", ]
+
+# Read the geocoded data from the file
+geocoded_df_edihs <- read_excel(paste0(datafolder,"/clean_geocoded_edihs.xlsx"))
+
+# Perform an anti-join to filter out the names that are already present in the geocoded data
+names_to_geocode <- edihcatalog %>% 
+  anti_join(geocoded_df_edihs, by = "name") %>%
+  dplyr::select(name, address, type)
+
+# Initialize a progress bar
+pb <- progress_bar$new(
+  format = "[:bar] :percent Elapsed: :elapsed ETA: :eta",
+  total = nrow(names_to_geocode)
+)
+
+# Geocode the addresses and update the progress bar
+geocoded_results_edihs <- lapply(1:nrow(names_to_geocode), function(i) {
+  pb$tick()
+  name <- names_to_geocode$name[i]
+  address <- names_to_geocode$address[i]
+  type <- names_to_geocode$type[i]
+  result <- tidygeocoder::geo(address, method = 'osm', full_results = TRUE)
+  data.frame(name = name, type = type, address = address, latitude = result$lat, longitude = result$long)
+})
+
+# Combine the geocoded results into a single dataframe
+geocoded_df_edihs <- do.call(rbind, geocoded_results_edihs)
+
+# Filter out any rows with missing values in the geocoded data
+geocoded_df_edihs <- na.omit(geocoded_df_edihs)
+
+write.xlsx(geocoded_df_edihs, file = paste0(datafolder,"/clean_geocoded_edihs_new_NOMINATIM.xlsx"))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+###################################
+###################################
+# GEOCODING OF THE UNTREATED SAMPLE
+###################################
+###################################
+
+# Load the data
+sampledata <-  read_excel(paste0(datafolder,"/clean-addresses-sample.xlsx"))
+
+# Merge the edihservices and sampledata
+datamerged <- sampledata
+
+# Filter out rows with missing addresses and names, and with fiscal codes equal to 0
+datamerged <- datamerged[!is.na(datamerged$address)  & datamerged$bvdid != 0, ]
+datamerged$bvdid <- as.character(datamerged$bvdid)
+
+
+# Read the geocoded data from the file
+geocoded_df_sample <- read_excel(paste0(datafolder,"/clean_geocoded_sample_NOMINATIM.xlsx"))
+
+#geocoded_df_sample <- data.frame(bvdid=character(), address = character(), latitude = numeric(), longitude = numeric())
+
+
+# Perform an anti-join to filter out the fiscal codes that are already present in the geocoded data
+fiscal_codes_to_geocode <- datamerged %>%
+  anti_join(geocoded_df_sample, by = "bvdid") %>%
+  select(bvdid, address)
+
+
+
+# Merge the fiscal_codes_to_geocode and datamerged
+datamergedtogeocode <- merge(fiscal_codes_to_geocode, datamerged, by="bvdid")
+
+# Initialize a progress bar
+pb <- progress_bar$new(
+  format = "[:bar] :percent Elapsed: :elapsed ETA: :eta",
+  total = nrow(datamergedtogeocode)
+)
+
+# Initialize an empty dataframe for the geocoded results
+geocoded_results <- data.frame(address = character(), latitude = numeric(), longitude = numeric())
+
+# Iterate over each address and geocode using Nominatim
+for (i in 1:nrow(fiscal_codes_to_geocode)) {
+  address <- fiscal_codes_to_geocode$address[i]
+  bvdid <- fiscal_codes_to_geocode$bvdid[i]
+  
+  if (address != "" & !is.na(address)) {
+    result <- tidygeocoder::geo(address, method = 'osm', full_results = TRUE)
+    geocode_result <- data.frame(bvdid = bvdid, 
+                                 address = address, 
+                                 latitude = result$lat, 
+                                 longitude = result$long)
+  } else {
+    geocode_result <- data.frame(bvdid = bvdid, 
+                                 address = address, 
+                                 latitude = NA, 
+                                 longitude = NA)
+  }
+  
+  # Update the geocoded dataframe in real-time
+  geocoded_results <- rbind(geocoded_results, geocode_result)
+  
+  # Print progress or update a progress bar
+  pb$tick()
+  print(paste("Geocoded", i, "out of", nrow(fiscal_codes_to_geocode), "addresses"))
+}
+
+# Combine the geocoded results with the existing geocoded data
+geocoded_df_sample <- bind_rows(geocoded_df_sample, geocoded_results)
+
+# Combine the geocoded results into a single dataframe
+geocoded_df_sample_new <- geocoded_results
+
+# Combine the geocoded results into a single dataframe
+# geocoded_df_sample <- do.call(rbind, geocoded_results)
+
+# The geocoded_df_sample dataframe now contains the geocoding results for all addresses
+write.xlsx(geocoded_df_sample_new, file = paste0(datafolder,"/clean_geocoded_sample_new_NOMINATIM.xlsx"))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##########################################################
+
+
+# Mapping
+
+# Download NUTS shapefile from Eurostat
+nuts_shapefile <- st_read(paste0(datafolder,"/NUTS_RG_20M_2021_3035.shp"))
+
+# Filter for nuts2
+nuts2_shapefile <- nuts_shapefile[nuts_shapefile$LEVL_CODE == "2", ]
+
+# Filter for nuts0
+nuts0_shapefile <- nuts_shapefile[nuts_shapefile$LEVL_CODE == "0", ]
+
+# Define the bounding box for the area you want to plot
+bbox <- st_bbox(c(xmin = 1000000, xmax = 6500000, ymin = 100000, ymax = 5400000))
+
+# Crop the spatial data to the specified bounding box
+nuts0_shapefile <- st_crop(nuts0_shapefile, bbox)
+
+# Filter for NUTS2 regions excluding certain codes
+exclude_codes <- c("FRY", "TR", "UK", "AL", "RS", "ME", "NO0B", "PT20", "MK", "CH")
+for (i in seq_along(exclude_codes)) {
+  nuts2_shapefile <- nuts2_shapefile[!str_detect(nuts2_shapefile$NUTS_ID, exclude_codes[i]), ]
+}
+
+# Filter for NUTS0 regions excluding certain codes
+exclude_codes <- c("TR", "UK", "AL", "RS", "ME", "MK", "CH")
+for (i in seq_along(exclude_codes)) {
+  nuts0_shapefile <- nuts0_shapefile[!str_detect(nuts0_shapefile$NUTS_ID, exclude_codes[i]), ]
+}
+
+# Geocoded results for DMA
+geocoded_df <- read_excel(paste0(datafolder,"/clean_geocoded_dma_NOMINATIM.xlsx"))
+
+# Filter based on latitude and longitude boundaries
+min_lat <- 27
+max_lat <- 71
+min_long <- -18
+max_long <- 33
+geocoded_df <- geocoded_df %>%
+  filter(latitude >= min_lat & latitude <= max_lat & longitude >= min_long & longitude <= max_long)
+
+# Convert geocoded data to sf object
+geocoded_sf <- st_as_sf(geocoded_df, coords = c("longitude", "latitude"), crs = st_crs("EPSG:4326"))
+
+# Transform the geocoded points to match the CRS of the shapefile
+geocoded_sf <- st_transform(geocoded_sf, crs = st_crs(nuts0_shapefile))
+
+# Spatial join to keep only points within the shapefile bounds
+geocoded_within_bounds <- st_join(geocoded_sf, nuts0_shapefile)
+
+# Create the ggplot without axis labels
+p <- ggplot() +
+  geom_sf(data = nuts0_shapefile) +
+  geom_sf(data = geocoded_within_bounds, color = "red", size = 0.01) +
+  theme_minimal() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+
+# Print the ggplot
+print(p)
+
+include_codes <- c("DE")
+
+for (i in seq_along(include_codes)) {
+  nuts0_shapefile_singlecountry <- nuts0_shapefile[str_detect(nuts0_shapefile$NUTS_ID, include_codes[i]), ]
+}
+
+# Create the ggplot without axis labels
+p <- ggplot() +
+  geom_sf(data = nuts0_shapefile_singlecountry) +
+  geom_sf(data = geocoded_within_bounds, color = "red", size = 0.1) +
+  theme_minimal() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+
+# Print the ggplot
+# print(p)
+
+# Perform a spatial join to keep only the points falling within the specified country border
+points_within_singlecountry <- st_intersection(geocoded_sf, nuts0_shapefile_singlecountry)
+
+# Create the ggplot without axis labels
+p <- ggplot() +
+  geom_sf(data = nuts0_shapefile_singlecountry) +
+  geom_sf(data = points_within_singlecountry, color = "red", size = 1) +
+  theme_minimal() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+
+# Print the ggplot
+# print(p)
+
+
+
+
+
+
+############################################
+### ADDING EDIHs and UNTREATED TO THE MAP ##
+############################################
+
+
+
+geocoded_df <- geocoded_df %>%
+  filter(latitude >= min_lat & latitude <= max_lat & longitude >= min_long & longitude <= max_long)
+
+geocoded_df_edihs <- geocoded_df_edihs %>%
+  filter(latitude >= min_lat & latitude <= max_lat & longitude >= min_long & longitude <= max_long)
+
+geocoded_df_sample <- geocoded_df_sample %>%
+  filter(latitude >= min_lat & latitude <= max_lat & longitude >= min_long & longitude <= max_long)
+
+# Convert geocoded data to sf objects
+geocoded_sf <- st_as_sf(geocoded_df, coords = c("longitude", "latitude"), crs = st_crs("EPSG:4326"))
+geocoded_sf_edihs <- st_as_sf(geocoded_df_edihs, coords = c("longitude", "latitude"), crs = st_crs("EPSG:4326"))
+geocoded_sample_sf <- st_as_sf(geocoded_df_sample, coords = c("longitude", "latitude"), crs = st_crs("EPSG:4326"))
+
+# Transform the geocoded points to match the CRS of the shapefile
+geocoded_sf <- st_transform(geocoded_sf, crs = st_crs(nuts0_shapefile))
+geocoded_sf_edihs <- st_transform(geocoded_sf_edihs, crs = st_crs(nuts0_shapefile))
+geocoded_sample_sf <- st_transform(geocoded_sample_sf, crs = st_crs(nuts0_shapefile))
+
+# Spatial join to keep only points within the shapefile bounds
+geocoded_within_bounds <- st_join(geocoded_sf, nuts0_shapefile)
+geocoded_within_bounds_edihs <- st_join(geocoded_sf_edihs, nuts0_shapefile)
+geocoded_within_bounds_sample <- st_join(geocoded_sample_sf, nuts0_shapefile)
+
+# Create a new variable for coloring based on the type
+geocoded_within_bounds_edihs <- geocoded_within_bounds_edihs %>%
+  mutate(color = ifelse(type == "Seal of Excellence", "darkgreen", "blue"))
+
+# Plot with different colors for each dataset
+# Plot all three datasets
+p <- ggplot() +
+  geom_sf(data = nuts0_shapefile) +
+  geom_sf(data = geocoded_within_bounds_sample, color = "lightblue", size = 0.01) +
+  geom_sf(data = geocoded_within_bounds, color = "red", size = 0.01) +
+  geom_sf(data = geocoded_within_bounds_edihs, aes(color = color), size = 0.01) +
+  scale_color_identity() +
+  theme_minimal() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+
+ggsave(filename = paste0(outputfolder,"/EU_map.pdf"), plot = p, width = 8, height = 6)
+
+# Print the ggplot
+print(p)
+
+# Plot only sample and EDIHs
+p_sample <- ggplot() +
+  geom_sf(data = nuts0_shapefile) +
+  geom_sf(data = geocoded_within_bounds_sample, color = "lightblue", size = 0.01) +
+  geom_sf(data = geocoded_within_bounds_edihs, aes(color = color), size = 0.01) +
+  scale_color_identity() +
+  theme_minimal() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+
+ggsave(filename = paste0(outputfolder,"/EU_map_onlysample.pdf"), plot = p_sample, width = 8, height = 6)
+
+# Plot only treated and EDIHs
+p_treated <- ggplot() +
+  geom_sf(data = nuts0_shapefile) +
+  geom_sf(data = geocoded_within_bounds, color = "red", size = 0.01) +
+  geom_sf(data = geocoded_within_bounds_edihs, aes(color = color), size = 0.01) +
+  scale_color_identity() +
+  theme_minimal() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+
+ggsave(filename = paste0(outputfolder,"/EU_map_onlytreated.pdf"), plot = p_treated, width = 8, height = 6)
+
+
+
+
+# # Include specific country (e.g., DE)
+# include_codes <- c("DE")
+
+# for (i in seq_along(include_codes)) {
+#   nuts0_shapefile_singlecountry <- nuts0_shapefile[str_detect(nuts0_shapefile$NUTS_ID, include_codes[i]), ]
+# }
+
+# # Plot for the specific country
+# p <- ggplot() +
+#   geom_sf(data = nuts0_shapefile_singlecountry) +
+#   geom_sf(data = geocoded_within_bounds_sample, color = "lightblue", size = 0.1) +
+#   geom_sf(data = geocoded_within_bounds, color = "red", size = 0.1) +
+#   geom_sf(data = geocoded_within_bounds_edihs, aes(color = color), size = 0.1) +
+#   theme_minimal() +
+#   theme(panel.grid = element_blank(),
+#         axis.text.x = element_blank(),
+#         axis.text.y = element_blank(),
+#         axis.title.x = element_blank(),
+#         axis.title.y = element_blank())
+
+# # Print the ggplot
+# print(p)
+
+# # Perform a spatial join to keep only the points falling within the specified country border
+# points_within_singlecountry <- st_intersection(geocoded_sf, nuts0_shapefile_singlecountry)
+# points_within_singlecountry_edihs <- st_intersection(geocoded_sf_edihs, nuts0_shapefile_singlecountry)
+# points_within_singlecountry_sample <- st_intersection(geocoded_sample_sf, nuts0_shapefile_singlecountry)
+
+# points_within_singlecountry_edihs <- points_within_singlecountry_edihs %>%
+#   mutate(color = ifelse(type == "Seal of Excellence", "darkgreen", "blue"))
+
+
+# # Create the ggplot for the specified country with three datasets
+# p <- ggplot() +
+#   geom_sf(data = nuts0_shapefile_singlecountry) +
+#   geom_sf(data = points_within_singlecountry_sample, color = "lightblue", size = 1) +
+#   geom_sf(data = points_within_singlecountry, color = "red", size = 1) +
+#   geom_sf(data = points_within_singlecountry_edihs, aes(color = color), size = 1) +
+#   scale_color_manual(values = c("blue" = "blue", "darkgreen" = "darkgreen")) +
+#   theme_minimal() +
+#   theme(panel.grid = element_blank(),
+#         axis.text.x = element_blank(),
+#         axis.text.y = element_blank(),
+#         axis.title.x = element_blank(),
+#         axis.title.y = element_blank())
+
+# # Print the ggplot
+# print(p)
+
+
+
+plotsinglecountry <- function(nuts0_shapefile, geocoded_sf, geocoded_sf_edihs, 
+                              geocoded_sample_sf, country_code) {
+  # Filter shapefile for the specified country code
+  nuts0_shapefile_singlecountry <- nuts0_shapefile[
+    str_detect(nuts0_shapefile$NUTS_ID, country_code), ]
+  
+  # Perform a spatial join to keep only the points falling within the specified country border
+  points_within_country <- st_intersection(geocoded_sf, nuts0_shapefile_singlecountry)
+  points_within_country_edihs <- st_intersection(geocoded_sf_edihs, nuts0_shapefile_singlecountry)
+  points_within_country_sample <- st_intersection(geocoded_sample_sf, nuts0_shapefile_singlecountry)
+  
+  points_within_country_edihs <- points_within_country_edihs %>%
+    mutate(color = ifelse(type == "Seal of Excellence", "darkgreen", "blue"))
+  
+  # Create the ggplot for the specified country with three datasets
+  p <- ggplot() +
+    geom_sf(data = nuts0_shapefile_singlecountry) +
+    geom_sf(data = points_within_country_sample, color = "lightblue", size = 1) +
+    geom_sf(data = points_within_country, color = "red", size = 1) +
+    geom_sf(data = points_within_country_edihs, aes(color = color), size = 1) +
+    scale_color_manual(values = c("blue" = "blue", "darkgreen" = "darkgreen")) +
+    theme_minimal() +
+    theme(panel.grid = element_blank(),
+          axis.text.x = element_blank(),
+          axis.text.y = element_blank(),
+          axis.title.x = element_blank(),
+          axis.title.y = element_blank(),
+          legend.position = "none")
+  
+  # Print the ggplot
+  print(p)
+
+  # Save the plot as a PDF file
+  ggsave(filename = paste0(outputfolder, "/", country_code, "_map.pdf"), 
+         plot = p, width = 8, height = 6)
+}
+
+# Example usage:
+include_codes <- c("AT", "BE", "BG", "CZ", "DK", "EE" , "ES" ,
+                   "FI", "HR", "EL", "IE", "DE", "FR", "IT", "LT",
+                   "LV", "NL", "SI")  # Replace with your list of country codes
+
+for (code in include_codes) {
+  plotsinglecountry(nuts0_shapefile, geocoded_sf, geocoded_sf_edihs, geocoded_sample_sf, code)
+}
+
+# Filter the geocoded data for EDIH and Seal of Excellence hubs
+geocoded_edihs_only <- geocoded_within_bounds_edihs %>%
+  filter(type %in% c("EDIH", "Seal of Excellence"))
+
+# Create a new variable for coloring based on the type
+geocoded_edihs_only <- geocoded_edihs_only %>%
+  mutate(color = ifelse(type == "Seal of Excellence", "darkgreen", "blue"))
+
+# Plot with different colors for EDIH and Seal of Excellence hubs
+p_edihs <- ggplot() +
+  geom_sf(data = nuts0_shapefile) +
+  geom_sf(data = geocoded_edihs_only, aes(color = color), size = 1.5) +
+  scale_color_identity() +
+  theme_minimal() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        legend.position = "none") # Remove the legend
+
+# Save the plot as a PDF file
+ggsave(filename = paste0(outputfolder, "/EDIH_and_Seal_of_Excellence_map.pdf"), plot = p_edihs, width = 8, height = 6)
+
+# Print the ggplot
+print(p_edihs)
+
+```
+
+

@@ -1,0 +1,898 @@
+---
+title: "EDIH file analysis"
+author: "Federico Vicentini"
+date: "27/11/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Clear the variables
+rm(list = ls())
+
+
+# Set the working directory to source file location with
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+
+# Install packages
+packages <- c("ggplot2", "sf")
+new.packages <- packages[!(packages %in% installed.packages()[, "Package"])]
+if (length(new.packages)) install.packages(new.packages)
+invisible(lapply(packages, library, character.only = TRUE))
+```
+
+
+```{r p2, include=TRUE, echo=FALSE, dev='svg'}
+
+workdir <- dirname(getwd())
+
+datafolder <- paste0(workdir, "/Data")
+
+outputfolder <- paste0(workdir, "/Output")
+
+
+library(openxlsx)
+
+######################################
+
+###### ORGANIZE THE DATA #############
+
+######################################
+
+#recode the varnames so that they are not so messy as they are rn
+
+varnames = c("name",
+             "description",
+             "fiscal_code",
+             "pic_number",
+             "contact_person",
+             "role",
+             "email",
+             "phone",
+             "website",
+             "size",
+             "foundation_year",
+             "country",
+             "region",
+             "address",
+             "primary_sector",
+             "other_sectors",
+             "associated_edihs",
+             "edih",
+             "email-creator")
+
+
+library(readxl)
+library(stringr)
+
+data <- read_excel(paste0(datafolder,"/export-sme.xlsx"))
+#data <- read.csv("DMA SME.csv")
+
+
+data = as.data.frame(data)
+
+
+
+names(data) = varnames
+```
+
+```{r p1, include=TRUE, echo=FALSE, dev='svg'}
+
+# Trying to get rid of all the region names after a comma or a slash
+
+library(stringr)
+
+for (i in 1:nrow(data)) {
+  pattern_matches <- str_locate_all(data$region[i], c(",", "/"))
+  if (length(pattern_matches[[1]]) > 0) {
+    data$region[i] <- str_sub(data$region[i], 1, pattern_matches[[1]][[1]][1] - 1)
+  }
+}
+
+
+
+
+
+#library(rgdal)
+library(eurostat)
+library(dplyr)
+
+nuts_metadata <- get_eurostat_geospatial(year = "2021")
+nuts_metadata <- data.frame(nuts_metadata)
+
+# Correction to region names in the nuts metadata
+
+#nuts_metadata$NAME_LATN <- factor(nuts_metadata$NAME_LATN, levels  = unique(nuts_metadata$NAME_LATN))
+
+nuts_metadata$NAME_LATN <- ifelse(nuts_metadata$NAME_LATN == "Comunidad Valenciana",  "Comunitat Valenciana", nuts_metadata$NAME_LATN)
+nuts_metadata$NAME_LATN <- ifelse(nuts_metadata$NAME_LATN == "Anatoliki Makedonia, Thraki",  "Anatoliki Makedonia", nuts_metadata$NAME_LATN)
+nuts_metadata$NAME_LATN <- ifelse(nuts_metadata$NAME_LATN == "Agder og Sør-Østlandet",  "Sør-Østlandet", nuts_metadata$NAME_LATN)
+nuts_metadata$NAME_LATN <- ifelse(nuts_metadata$NAME_LATN == "Oslo og Viken",  "Oslo og Akershus", nuts_metadata$NAME_LATN)
+nuts_metadata$NAME_LATN <- ifelse(nuts_metadata$NAME_LATN == "Liechtenstein",  "Vaduz", nuts_metadata$NAME_LATN)
+nuts_metadata$NAME_LATN <- ifelse(nuts_metadata$NAME_LATN == "Centre — Val de Loire",  "Centre - Val de Loire", nuts_metadata$NAME_LATN)
+nuts_metadata$NAME_LATN <- ifelse(nuts_metadata$id == "BE10",  "Région de Bruells/ Brussels Hoofdstedelijk Gewest", nuts_metadata$NAME_LATN)
+
+
+nuts_metadata <- nuts_metadata[nuts_metadata$LEVL_CODE==2,]
+nuts_codes <- nuts_metadata[,c(3,5)]
+
+names(nuts_codes) <- c("region_code","region")
+
+olddata <- data
+
+data <- merge(data, nuts_codes, by="region")
+
+a = data.frame(anti_join(olddata, data))
+
+data$country_code = substr(data$region_code, 1, 2)
+
+# Read the shapefile using sf
+nuts_df <- st_read(paste0(datafolder, "/NUTS_RG_20M_2021_3035.shp"))
+
+
+dataplot = data.frame(table(data$region_code))
+
+dataplot0 = data.frame(table(data$country_code))
+# 
+# avgscores <- data %>%
+#   group_by(region_code) %>%
+#   summarize(average_score = mean(dma_score),
+#             average_dbs = mean(dig_business_strat),
+#             average_dr = mean(dig_readiness),
+#             average_dg = mean(data_gov),
+#             average_hcd = mean(hum_centr_dig),
+#             average_aai = mean(automation_ai),
+#             average_gd = mean(green_dig))
+# 
+# avgscores1 <- data %>%
+#   group_by(country_code) %>%
+#   summarize(average_score = mean(dma_score),
+#             average_dbs = mean(dig_business_strat),
+#             average_dr = mean(dig_readiness),
+#             average_dg = mean(data_gov),
+#             average_hcd = mean(hum_centr_dig),
+#             average_aai = mean(automation_ai),
+#             average_gd = mean(green_dig))
+
+
+# average_by_region <- aggregate(variable ~ region, data = data, FUN = mean)
+
+
+names(dataplot) = c("NUTS_ID","Var1")
+
+names(dataplot0) = c("NUTS_ID","Var1")
+
+
+dataplot$NUTS_ID = as.character(dataplot$NUTS_ID)
+# Merge dataplot and nuts_df datasets
+merged_data <- merge(dataplot, nuts_df, by = "NUTS_ID")
+
+
+
+
+
+library(sf)
+library(ggplot2)
+
+# Download NUTS shapefile from Eurostat
+nuts_shapefile <- st_read(paste0(datafolder,"/NUTS_RG_20M_2021_3035.shp"))
+
+# Filter for nuts2
+nuts2_shapefile <- nuts_shapefile[nuts_shapefile$LEVL_CODE == "2", ]
+
+# Filter for nuts1
+nuts0_shapefile <- nuts_shapefile[nuts_shapefile$LEVL_CODE == "0", ]
+
+
+# Define the bounding box for the area you want to plot
+# Replace the values with the appropriate coordinates for your desired area
+bbox <- st_bbox(c(xmin = 2000000, xmax = 7000000,
+                  ymin = 1400000, ymax = 5500000))
+
+# Crop the spatial data to the specified bounding box
+nuts0_shapefile <- st_crop(nuts0_shapefile, bbox)
+
+
+
+
+# Filter for NUTS2 regions
+# Define NUTS codes to exclude (e.g., Guyana and Turkey)
+exclude_codes <- c("FRY", "TR", "UK", "AL", "RS", "ME", "NO0B", "PT20", "ES70", "MK", "CH")
+
+for(i in 1:length(exclude_codes)){
+  nuts2_shapefile <- nuts2_shapefile[!str_detect(nuts2_shapefile$NUTS_ID, exclude_codes[i]), ]
+}
+
+# Filter for NUTS0 regions
+# Define NUTS codes to exclude (e.g., Guyana and Turkey)
+exclude_codes <- c("TR", "UK", "AL", "RS", "ME", "MK", "CH")
+
+for(i in 1:length(exclude_codes)){
+  nuts0_shapefile <- nuts0_shapefile[!str_detect(nuts0_shapefile$NUTS_ID, exclude_codes[i]), ]
+}
+
+
+
+# nuts2_shapefile <- nuts_shapefile[nuts_shapefile$LEVL_CODE == "2", ]
+
+ggplot() +
+  geom_sf(data = nuts2_shapefile, color = "black", fill = NA, size = 0.2) +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+
+merged_data <- merge(nuts2_shapefile, dataplot, by.x="NUTS_ID", by.y="NUTS_ID", all.x="TRUE")
+
+
+ggplot() +
+  geom_sf(data = merged_data, aes(fill = Var1), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Nr. of obs.") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+# Plot of respondents by country
+
+merged_data0 <- merge(nuts0_shapefile, dataplot0, by.x="NUTS_ID", by.y="NUTS_ID", all.x="TRUE")
+
+
+ggplot() +
+  geom_sf(data = merged_data0, aes(fill = Var1), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Nr. of obs.") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+
+
+countrydata = data.frame(table(data$country))
+
+ggplot(countrydata, aes(x = "", y = Freq, fill = Var1)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +
+  theme_void() +
+  theme(legend.position = "none") +
+  geom_text(aes(label = Var1), position = position_stack(vjust = 0.5))
+
+bar_chart <- ggplot(countrydata, aes(x = reorder(Var1, -Freq), y = Freq)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = Freq), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Bar Chart with Labels", x = "Category", y = "Frequency") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+# try withou the baltics
+
+merged_data_nobaltics <- merged_data[!(merged_data$CNTR_CODE %in% c("EE", "LT", "LV")) ,]
+
+
+
+ggplot() +
+  geom_sf(data = merged_data_nobaltics, aes(fill = Var1), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Nr. of obs.") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+
+merged_data0_nobaltics <- merged_data0[!(merged_data0$CNTR_CODE %in% c("EE", "LT", "LV")) ,]
+
+
+
+ggplot() +
+  geom_sf(data = merged_data0_nobaltics, aes(fill = Var1), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Nr. of obs.") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+# countrydata = data.frame(table(data$edih_type))
+# 
+# ggplot(countrydata, aes(x = "", y = Freq, fill = Var1)) +
+#   geom_bar(stat = "identity", width = 1) +
+#   coord_polar(theta = "y") +
+#   theme_void() +
+#   theme(legend.position = "none") +
+#   geom_text(aes(label = "Var1"), position = position_stack(vjust = 0.5))
+# 
+# bar_chart <- ggplot(countrydata, aes(x = reorder(Var1, -Freq), y = Freq)) +
+#   geom_bar(stat = "identity", fill = "steelblue") +
+#   # geom_text(aes(label = Freq), vjust = -0.5, size = 4) +  # Label placement and size
+#   labs(title = "Type of EDIH respondents", x = "", y = "Frequency") +
+#   theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+# 
+# print(bar_chart)
+
+foundationyear=data$foundation_year
+
+foundationyear=foundationyear[foundationyear!=0]
+
+hist(foundationyear, 
+     main = "Foundation Year",
+     xlab = "", col = "skyblue",
+     border = "darkblue", breaks = seq(1890,2024,1)
+)
+
+# Commented out to avoid overwriting the file
+#write.xlsx(data, file = paste0(datafolder,"/clean-edih-services.xlsx"))
+```
+
+
+
+```{r mergingwithdmadata, include=TRUE, echo=FALSE, dev='svg'}
+library(dplyr)
+
+dmadata = read_excel(paste0(datafolder,"/clean-sme-scores.xlsx"))
+names(data)[length(names(data))-1]="region_code"
+
+
+merge_dma_services <- merge(data, dmadata, by = c("region_code", "fiscal_code", "country_code", "country"), all.x = TRUE)
+
+merge_dma_services$dma_arrived <- ifelse(is.na(merge_dma_services$dma_score),0,1)
+
+edihsummary <- merge_dma_services %>%
+  group_by(edih , region_code) %>%
+  summarize(dma_arrived = sum(dma_arrived), obs = n())
+
+edihsummary$prop_arrived = edihsummary$dma_arrived/edihsummary$obs
+edihsummary$country_code = substr(edihsummary$region_code, 1,2)
+
+edihsummarynoreg <- edihsummary %>%
+  group_by(edih, country_code) %>%
+  summarize(dma_arrived = sum(dma_arrived), obs = sum(obs))
+
+edihsummarynoreg$prop_arrived = edihsummarynoreg$dma_arrived/edihsummarynoreg$obs
+
+
+regionsummary <- edihsummary %>%
+  group_by(region_code) %>%
+  summarize(dma_arrived = sum(dma_arrived), obs = sum(obs))
+
+regionsummary$prop_arrived = regionsummary$dma_arrived/regionsummary$obs
+regionsummary$country_code = substr(regionsummary$region_code, 1,2)
+
+countrysummary <- regionsummary %>%
+  group_by(country_code) %>%
+  summarize(dma_arrived = sum(dma_arrived), obs = sum(obs))
+
+countrysummary$prop_arrived = countrysummary$dma_arrived/countrysummary$obs
+
+
+
+merged_data <- merge(nuts2_shapefile, regionsummary, by.x="NUTS_ID", by.y="region_code", all.x="TRUE")
+
+merged_data0 <- merge(nuts0_shapefile, countrysummary, by.x="NUTS_ID", by.y="country_code", all.x="TRUE")
+
+merged_data_edih <- merge(nuts2_shapefile, edihsummary, by.x="NUTS_ID", by.y="region_code", all.x="TRUE")
+
+ggplot() +
+  geom_sf(data = merged_data, aes(fill = prop_arrived), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "DMA Replies / Obs") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggplot() +
+  geom_sf(data = merged_data0, aes(fill = prop_arrived), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "DMA Replies / Obs") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggplot() +
+  geom_sf(data = merged_data, aes(fill = obs-dma_arrived), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "white", high = "darkred", name = "Missing DMA Replies") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggplot() +
+  geom_sf(data = merged_data0, aes(fill = obs-dma_arrived), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "white", high = "darkred", name = "Missing DMA Replies") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+
+bar_chart <- ggplot(merged_data0, aes(x = reorder(CNTR_CODE, -prop_arrived), y = prop_arrived)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(title = "Proportion of replies by country", x = "", y = "") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+
+bar_chart <- ggplot(merged_data0, aes(x = reorder(CNTR_CODE, -(obs-dma_arrived)), y = obs-dma_arrived)) +
+  geom_bar(stat = "identity", fill = "darkred") +
+  labs(title = "Missing DMA replies by country", x = "", y = "") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+
+
+#########################################
+#### GRAPHS FOR THE MEETINGS ############
+#########################################
+
+# Meeting nr 1: AT HU IE NL RO
+
+merged_data_meeting1 <- merged_data[merged_data$CNTR_CODE %in% c("AT", "HU", "IE", "NL", "RO") ,]
+
+edih_reg1 <- edihsummarynoreg[edihsummarynoreg$country_code %in% c("AT", "HU", "IE", "NL", "RO") ,]
+
+edih_reg1 <- edih_reg1 %>%
+  group_by(edih) %>%
+  summarize(dma_arrived = sum(dma_arrived), obs = sum(obs))
+
+edih_reg1$prop_arrived <- round(edih_reg1$dma_arrived / edih_reg1$obs, 2)
+
+ggplot() +
+  geom_sf(data = merged_data_meeting1, aes(fill = obs), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Nr. of obs.") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggplot() +
+  geom_sf(data = merged_data_meeting1, aes(fill = prop_arrived), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Replies / Obs.") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggplot() +
+  geom_sf(data = merged_data_meeting1, aes(fill = obs-dma_arrived), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Missing Replies") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+bar_chart <- ggplot(edih_reg1, aes(x = reorder(edih, -prop_arrived), y = prop_arrived)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = prop_arrived), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Proportion of replies by EDIH delivering services the region", x = " ", y = "") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+bar_chart <- ggplot(edih_reg1, aes(x = reorder(edih, -obs), y = obs)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = obs), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Service delivered by each EDIH in the region", x = " ", y = "") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+bar_chart <- ggplot(edih_reg1, aes(x = reorder(edih, -(obs-dma_arrived)), y = obs-dma_arrived)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = obs-dma_arrived), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Missing DMA Replies for each EDIH in the region", x = " ", y = "") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+# Meeting nr 2: BE FR
+
+merged_data_meeting1 <- merged_data[merged_data$CNTR_CODE %in% c("BE", "FR") ,]
+
+
+edih_reg1 <- edihsummarynoreg[edihsummarynoreg$country_code %in% c("BE", "FR") ,]
+
+edih_reg1 <- edih_reg1 %>%
+  group_by(edih) %>%
+  summarize(dma_arrived = sum(dma_arrived), obs = sum(obs))
+
+edih_reg1$prop_arrived <- round(edih_reg1$dma_arrived / edih_reg1$obs, 2)
+
+
+ggplot() +
+  geom_sf(data = merged_data_meeting1, aes(fill = obs), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Nr. of obs.") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggplot() +
+  geom_sf(data = merged_data_meeting1, aes(fill = prop_arrived), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Replies / Obs.") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggplot() +
+  geom_sf(data = merged_data_meeting1, aes(fill = obs-dma_arrived), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Missing Replies") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+bar_chart <- ggplot(edih_reg1, aes(x = reorder(edih, -prop_arrived), y = prop_arrived)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = prop_arrived), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Proportion of replies by EDIH delivering services the region", x = " ", y = "") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+bar_chart <- ggplot(edih_reg1, aes(x = reorder(edih, -obs), y = obs)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = obs), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Service delivered by each EDIH in the region", x = " ", y = "") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+bar_chart <- ggplot(edih_reg1, aes(x = reorder(edih, -(obs-dma_arrived)), y = obs-dma_arrived)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = obs-dma_arrived), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Missing DMA Replies for each EDIH in the region", x = " ", y = "") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+
+# Meeting nr 3: HR IT SK
+
+merged_data_meeting1 <- merged_data[merged_data$CNTR_CODE %in% c("HR", "IT", "SK") ,]
+
+edih_reg1 <- edihsummarynoreg[edihsummarynoreg$country_code %in% c("HR", "IT", "SK") ,]
+
+edih_reg1 <- edih_reg1 %>%
+  group_by(edih) %>%
+  summarize(dma_arrived = sum(dma_arrived), obs = sum(obs))
+
+edih_reg1$prop_arrived <- round(edih_reg1$dma_arrived / edih_reg1$obs, 2)
+
+ggplot() +
+  geom_sf(data = merged_data_meeting1, aes(fill = obs), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Nr. of obs.") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggplot() +
+  geom_sf(data = merged_data_meeting1, aes(fill = prop_arrived), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Replies / Obs.") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggplot() +
+  geom_sf(data = merged_data_meeting1, aes(fill = obs-dma_arrived), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Missing Replies") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+
+bar_chart <- ggplot(edih_reg1, aes(x = reorder(edih, -prop_arrived), y = prop_arrived)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = prop_arrived), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Proportion of replies by EDIH delivering services the region", x = " ", y = "") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+bar_chart <- ggplot(edih_reg1, aes(x = reorder(edih, -obs), y = obs)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = obs), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Service delivered by each EDIH in the region", x = " ", y = "") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+bar_chart <- ggplot(edih_reg1, aes(x = reorder(edih, -(obs-dma_arrived)), y = obs-dma_arrived)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = obs-dma_arrived), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Missing DMA Replies for each EDIH in the region", x = " ", y = "") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+
+# Meeting nr 4: DK EE FI IS LT LV NO SE 
+
+merged_data_meeting1 <- merged_data[merged_data$CNTR_CODE %in% c("DK", "EE", "FI", "IS", "LT", "LV", "NO", "SE") ,]
+
+edih_reg1 <- edihsummarynoreg[edihsummarynoreg$country_code %in% c("DK", "EE", "FI", "IS", "LT", "LV", "NO", "SE") ,]
+
+edih_reg1 <- edih_reg1 %>%
+  group_by(edih) %>%
+  summarize(dma_arrived = sum(dma_arrived), obs = sum(obs))
+
+edih_reg1$prop_arrived <- round(edih_reg1$dma_arrived / edih_reg1$obs, 2)
+
+ggplot() +
+  geom_sf(data = merged_data_meeting1, aes(fill = obs), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Nr. of obs.") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggplot() +
+  geom_sf(data = merged_data_meeting1, aes(fill = prop_arrived), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Replies / Obs.") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggplot() +
+  geom_sf(data = merged_data_meeting1, aes(fill = obs-dma_arrived), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Missing Replies") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+bar_chart <- ggplot(edih_reg1, aes(x = reorder(edih, -prop_arrived), y = prop_arrived)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = prop_arrived), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Proportion of replies by EDIH delivering services the region", x = " ", y = "") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+bar_chart <- ggplot(edih_reg1, aes(x = reorder(edih, -obs), y = obs)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = obs), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Service delivered by each EDIH in the region", x = " ", y = "") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+bar_chart <- ggplot(edih_reg1, aes(x = reorder(edih, -(obs-dma_arrived)), y = obs-dma_arrived)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = obs-dma_arrived), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Missing DMA Replies for each EDIH in the region", x = " ", y = "") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+
+# Meeting nr 5: CZ LI LU MT PL
+
+merged_data_meeting1 <- merged_data[merged_data$CNTR_CODE %in% c("CZ", "LI", "LU", "MT", "PL") ,]
+
+edih_reg1 <- edihsummarynoreg[edihsummarynoreg$country_code %in% c("CZ", "LI", "LU", "MT", "PL") ,]
+
+edih_reg1 <- edih_reg1 %>%
+  group_by(edih) %>%
+  summarize(dma_arrived = sum(dma_arrived), obs = sum(obs))
+
+edih_reg1$prop_arrived <- round(edih_reg1$dma_arrived / edih_reg1$obs, 2)
+
+ggplot() +
+  geom_sf(data = merged_data_meeting1, aes(fill = obs), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Nr. of obs.") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggplot() +
+  geom_sf(data = merged_data_meeting1, aes(fill = prop_arrived), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Replies / Obs.") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggplot() +
+  geom_sf(data = merged_data_meeting1, aes(fill = obs-dma_arrived), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Missing Replies") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+
+
+bar_chart <- ggplot(edih_reg1, aes(x = reorder(edih, -prop_arrived), y = prop_arrived)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = prop_arrived), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Proportion of replies by EDIH delivering services the region", x = " ", y = "") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+bar_chart <- ggplot(edih_reg1, aes(x = reorder(edih, -obs), y = obs)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = obs), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Service delivered by each EDIH in the region", x = " ", y = "") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+bar_chart <- ggplot(edih_reg1, aes(x = reorder(edih, -(obs-dma_arrived)), y = obs-dma_arrived)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = obs-dma_arrived), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Missing DMA Replies for each EDIH in the region", x = " ", y = "") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+
+
+
+
+# Meeting nr 6: CY EL ES PT SI 
+
+
+
+merged_data_meeting1 <- merged_data[merged_data$CNTR_CODE %in% c("CY", "EL", "ES", "PT", "SI") ,]
+
+edih_reg1 <- edihsummarynoreg[edihsummarynoreg$country_code %in% c("CY", "EL", "ES", "PT", "SI") ,]
+
+edih_reg1 <- edih_reg1 %>%
+  group_by(edih) %>%
+  summarize(dma_arrived = sum(dma_arrived), obs = sum(obs))
+
+edih_reg1$prop_arrived <- round(edih_reg1$dma_arrived / edih_reg1$obs, 2)
+
+
+ggplot() +
+  geom_sf(data = merged_data_meeting1, aes(fill = obs), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Nr. of obs.") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggplot() +
+  geom_sf(data = merged_data_meeting1, aes(fill = prop_arrived), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Replies / Obs.") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggplot() +
+  geom_sf(data = merged_data_meeting1, aes(fill = obs-dma_arrived), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Missing Replies") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+bar_chart <- ggplot(edih_reg1, aes(x = reorder(edih, -prop_arrived), y = prop_arrived)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = prop_arrived), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Proportion of replies by EDIH delivering services the region", x = " ", y = "") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+bar_chart <- ggplot(edih_reg1, aes(x = reorder(edih, -obs), y = obs)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = obs), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Service delivered by each EDIH in the region", x = " ", y = "") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+bar_chart <- ggplot(edih_reg1, aes(x = reorder(edih, -(obs-dma_arrived)), y = obs-dma_arrived)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = obs-dma_arrived), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Missing DMA Replies for each EDIH in the region", x = " ", y = "") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+# Meeting nr 7: BG DE
+
+
+
+merged_data_meeting1 <- merged_data[merged_data$CNTR_CODE %in% c("BG", "DE") ,]
+
+edih_reg1 <- edihsummarynoreg[edihsummarynoreg$country_code %in%  c("BG", "DE") ,]
+
+edih_reg1 <- edih_reg1 %>%
+  group_by(edih) %>%
+  summarize(dma_arrived = sum(dma_arrived), obs = sum(obs))
+
+edih_reg1$prop_arrived <- round(edih_reg1$dma_arrived / edih_reg1$obs, 2)
+
+
+ggplot() +
+  geom_sf(data = merged_data_meeting1, aes(fill = obs), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Nr. of obs.") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggplot() +
+  geom_sf(data = merged_data_meeting1, aes(fill = prop_arrived), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Replies / Obs.") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggplot() +
+  geom_sf(data = merged_data_meeting1, aes(fill = obs-dma_arrived), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Missing Replies") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+bar_chart <- ggplot(edih_reg1, aes(x = reorder(edih, -prop_arrived), y = prop_arrived)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = prop_arrived), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Proportion of replies by EDIH delivering services the region", x = " ", y = "") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+bar_chart <- ggplot(edih_reg1, aes(x = reorder(edih, -obs), y = obs)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = obs), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Service delivered by each EDIH in the region", x = " ", y = "") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+bar_chart <- ggplot(edih_reg1, aes(x = reorder(edih, -(obs-dma_arrived)), y = obs-dma_arrived)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = obs-dma_arrived), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Missing DMA Replies for each EDIH in the region", x = " ", y = "") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+```
+```{r category-services}
+
+######################################
+
+###### ORGANIZE THE DATA #############
+
+######################################
+
+#recode the varnames so that they are not so messy as they are rn
+
+varnames = c("id",
+             "sme_name",
+             "fiscal_code",
+             "service_category",
+             "nr_attendees",
+             "service_price",
+             "price_invoiced",
+             "regional_national_funding",
+             "info_state_aid",
+             "technology_type",
+             "status",
+             "service_description",
+             "amount_investment_triggered",
+             "investment_type",
+             "dates",
+             "info_use_DEP",
+             "specific_use_DEP",
+             "specific_type_investment",
+             "specific_technology_type",
+             "edih_name",
+             "edih_country",
+             "customer_country",
+             "customr_region",
+             "customer_primary_sector",
+             "customer_staff_size",
+             "customer_type")
+
+
+library(readxl)
+library(stringr)
+
+services_category <- read_excel(paste0(datafolder,"/export-services.xlsx"))
+#data <- read.csv("DMA SME.csv")
+
+
+services_category = as.data.frame(services_category)
+
+
+
+names(services_category) = varnames
+
+
+merged_data_category = merge(services_category, dmadata, by=c("fiscal_code", "edih_name", "sme_name"))
+
+
+
+
+
+```
+

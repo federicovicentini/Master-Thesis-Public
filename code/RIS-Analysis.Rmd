@@ -1,0 +1,545 @@
+---
+title: "RIS analysis"
+author: "Federico Vicentini"
+date: "2023-12-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Clear the variables
+rm(list = ls())
+
+
+# Set the working directory to source file location with
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+
+# Install packages
+packages <- c("ggplot2")
+new.packages <- packages[!(packages %in% installed.packages()[, "Package"])]
+if (length(new.packages)) install.packages(new.packages)
+invisible(lapply(packages, library, character.only = TRUE))
+```
+
+```{r p0}
+
+workdir <- dirname(getwd())
+
+datafolder <- paste0(workdir, "/Data")
+
+outputfolder <- paste0(workdir, "/Output")
+
+
+
+library(readxl)
+
+eisdata <- read_excel(paste0(datafolder,"/EIS_Data.xlsx"))
+#eisdata <- read.csv("DMA SME.csv")
+
+varnames = c("num",
+              "indicator",
+              "indicator2",
+              "performance",
+              "year",
+              "zone",
+              "country",
+              "countryname",
+              "region",
+              "regionname",
+              "level",
+              "value")
+
+names(eisdata) = varnames
+
+eisdata$value = as.numeric(eisdata$value)
+
+eisdata = as.data.frame(eisdata)
+
+exclude_codes <- c("ME", "MK", "CH", "TR", "UK", "AL", "RS")
+
+
+
+library(dplyr)
+
+eisdata <- eisdata %>%
+  filter(!(country %in% exclude_codes)) %>%
+  filter(level == 0)
+
+
+
+# Now for REGIONAL DATA INPUT
+
+# Suppress warnings for this section
+suppressWarnings({
+  eisdataregion <- read_xlsx(paste0(datafolder,"/EIS_Data.xlsx"), sheet = 3, na = "")
+})
+
+# Unsuppress warnings
+options(warn = 0)
+
+
+
+
+
+
+varnames = c("indicator",
+              "performance",
+              "year",
+              "zone",
+              "country",
+              "countryname",
+              "region",
+              "regionname",
+              "level",
+              "value")
+
+names(eisdataregion) = varnames
+
+#eisdataregion$value = as.numeric(eisdataregion$value)
+
+eisdataregion = as.data.frame(eisdataregion)
+
+exclude_codes <- c("ME", "MK", "CH", "TR", "UK", "AL", "RS")
+
+
+
+library(dplyr)
+
+eisdataregion <- eisdataregion %>%
+  filter(!(region %in% exclude_codes)) %>%
+  filter(level == 1)
+
+# END OF THE REGIONAL DATA IMPORTS SECTION
+
+
+
+########################
+## CONTEXTUAL STRUCTURAL INDICATORS INPUT
+
+
+
+# Suppress warnings for this section
+suppressWarnings({
+  eisdatastruct <- read_xlsx(paste0(datafolder,"/EIS_Data.xlsx"), sheet = 2, na = "n/a")
+})
+
+# Unsuppress warnings
+options(warn = 0)
+
+
+
+
+
+
+varnames = c("indicator",
+              "performance",
+              "year",
+              "zone",
+              "country",
+              "countryname",
+              "region",
+              "regionname",
+              "level",
+              "value")
+
+names(eisdatastruct) = varnames
+
+#eisdataregion$value = as.numeric(eisdataregion$value)
+
+eisdatastruct = as.data.frame(eisdatastruct)
+
+exclude_codes <- c("ME", "MK", "CH", "TR", "UK", "AL", "RS")
+
+
+
+library(dplyr)
+
+eisdatastruct <- eisdatastruct %>%
+  filter(!(country %in% exclude_codes))
+
+######################################
+### end of THE STRUCTURAL DATA IMPORT
+
+
+
+avgeisdata <- eisdata %>%
+  group_by(country, indicator) %>%
+  summarise(eis_value = mean(value))
+
+avgeisdataregion <- eisdataregion %>%
+  group_by(region, indicator) %>%
+  summarise(eis_value = mean(value))
+
+avgeisdatastruct <- eisdatastruct %>%
+  group_by(country, indicator) %>%
+  summarise(eis_value = mean(value))
+
+avgeisdata = as.data.frame(avgeisdata)
+avgeisdataregion = as.data.frame(avgeisdataregion)
+avgeisdataregion = na.omit(avgeisdataregion)
+
+
+
+
+dmadata <- read_excel(paste0(datafolder,"/avgscorebycountry.xlsx"))
+
+dmaregiondata <- read_excel(paste0(datafolder,"/avgscorebyregion.xlsx"))
+
+merged <- merge(avgeisdata, dmadata, by.x="country", by.y="country_code", all.x=TRUE)
+merged <- na.omit(merged)
+
+merged = as.data.frame(merged)
+
+# Truncation of the nuts codes
+
+dmaregiondata$region_code <- substr(dmaregiondata$region_code , 1, 3)
+
+avgeisdataregion$region <- substr(avgeisdataregion$region , 1, 3)
+
+#redo the region evarages based on the new codes:
+
+avgeisdataregion <- avgeisdataregion %>%
+  group_by(region, indicator) %>%
+  summarise(eis_value = mean(eis_value))
+
+
+
+
+
+
+dmaregiondata <- dmaregiondata %>%
+  group_by(region_code) %>%
+  summarize(average_score = mean(average_score),
+            average_dbs = mean(average_dbs),
+            average_dr = mean(average_dr),
+            average_dg = mean(average_dg),
+            average_hcd = mean(average_hcd),
+            average_aai = mean(average_aai),
+            average_gd = mean(average_gd),
+            obs = sum(obs))
+
+
+
+
+mergedregion <- merge(avgeisdataregion, dmaregiondata, by.x="region", by.y="region_code")
+
+mergedregion = as.data.frame(mergedregion)
+
+
+mergedstruct <- merge(avgeisdatastruct, dmadata, by.x="country", by.y="country_code")
+
+mergedstruct = as.data.frame(mergedstruct)
+mergedstruct <- na.omit(mergedstruct)
+
+
+########################################
+########################################
+######## THRESHOLD FOR FILTERS!!! ######
+########################################
+########################################
+
+
+merged <- filter(merged, obs>=10)
+mergedregion <- filter(mergedregion, obs>=10)
+
+start <- which(names(merged) == "eis_value")
+finish <- which(names(merged) == "average_gd")
+todolist <- seq(start, finish, 1)
+
+namestoadd = c("eis_rank",
+               "dma_rank",
+               "dbs_rank",
+               "dr_rank",
+               "dg_rank",
+               "hcd_rank",
+               "aai_rank",
+               "gd_rank"
+               )
+
+for (i in start:finish) {
+  j <- which(todolist == i)
+  col_name <- namestoadd[j]
+
+  merged <- merged %>%
+    group_by(indicator) %>%
+    mutate(!!col_name := dense_rank(desc(!!sym(names(merged)[i]))))
+}
+
+a=table(merged$indicator)
+a=data.frame(a)
+library(tidyr)
+transposed_a <- spread(a, key = Var1, value = Freq)
+indicatorlist <- names(transposed_a)
+
+
+# Older version of the loop with problems in calling the columns
+
+# for(i in 1:length(indicatorlist)){
+#   merged0 <- merged %>%
+#   filter(indicator == indicatorlist[i])
+#   start <- which(names(merged) == "dma_rank")
+#   finish <- which(names(merged) == "gd_rank")
+#   for(j in start:finish){
+#     eispos = which(names(merged0) == "eis_rank")
+#     merged0$risdmaabsdist = abs(merged0[, eispos] - merged0[,j])
+#     merged0$risdmadist = merged0[, eispos] - merged0[,j]
+#     
+#     hist(merged0$risdmaabsdist, main = paste0("Absolute difference with ",indicatorlist[i]))
+#     hist(merged0$risdmadist, main = paste0("Difference with ",indicatorlist[i]))
+#   
+#     print(paste0("The correlation between ", names(merged0)[j]," and ",indicatorlist[i]," is: ",cor(merged0$eis_rank , merged0$dma_rank)))
+#   }
+# }
+
+library(corrplot)
+
+start <- which(names(merged) == "dma_rank")
+finish <- which(names(merged) == "gd_rank")
+start2 <- which(names(merged) == "average_score")
+finish2 <- which(names(merged) == "average_gd")
+sequence = seq(start,finish,1)
+sequence2 = seq(start2,finish2,1)
+  
+correlation_matrix = matrix(NA, length(indicatorlist), length(sequence))
+correlation_matrix2 = matrix(NA, length(indicatorlist), length(sequence2))
+
+for (i in 1:length(indicatorlist)) {
+  merged0 <- merged %>%
+    filter(indicator == indicatorlist[i])
+  
+  for (j in start:finish) {
+    eispos <- which(names(merged0) == "eis_rank")
+    eispos2 <- which(names(merged0) == "eis_value")
+    j2 <- sequence2[which(sequence == j)]
+    
+    # Ensure that columns are extracted as vectors
+    merged0$risdmaabsdist <- abs(merged0[[eispos]] - merged0[[j]])
+    merged0$risdmadist <- merged0[[eispos]] - merged0[[j]]
+    
+    # Check for missing values
+    if (any(is.na(merged0$risdmaabsdist)) || any(is.na(merged0$risdmadist))) {
+      warning("Missing values in risdmaabsdist or risdmadist.")
+    } else {
+      #hist(merged0$risdmaabsdist, main = paste0("Absolute difference with ", indicatorlist[i]))
+      #hist(merged0$risdmadist, main = paste0("Difference with ", indicatorlist[i]))
+      
+      correlationrank = cor(merged0[[eispos]], merged0[[j]])
+      correlation = cor(merged0[[eispos2]], merged0[[j2]])
+      #print(paste0("The correlation between ", names(merged0)[j], " and ", indicatorlist[i], " is: ", correlationrank))
+      correlation_matrix[i, which(sequence == j)] = correlationrank
+      
+      #print(paste0("The correlation between ", names(merged0)[j2], " and ", indicatorlist[i], " is: ", correlation))
+      correlation_matrix2[i, which(sequence2 == j2)] = correlation
+    }
+  }
+}
+
+
+
+# Redo it region by region
+
+start <- which(names(mergedregion) == "eis_value")
+finish <- which(names(mergedregion) == "average_gd")
+todolist <- seq(start, finish, 1)
+
+namestoadd = c("eis_rank",
+               "dma_rank",
+               "dbs_rank",
+               "dr_rank",
+               "dg_rank",
+               "hcd_rank",
+               "aai_rank",
+               "gd_rank"
+               )
+
+for (i in start:finish) {
+  j <- which(todolist == i)
+  col_name <- namestoadd[j]
+
+  mergedregion <- mergedregion %>%
+    group_by(indicator) %>%
+    mutate(!!col_name := dense_rank(desc(!!sym(names(mergedregion)[i]))))
+}
+
+a2=table(mergedregion$indicator)
+a2=data.frame(a2)
+library(tidyr)
+transposed_a2 <- spread(a2, key = Var1, value = Freq)
+regindicatorlist <- names(transposed_a2)
+
+
+
+library(corrplot)
+
+start <- which(names(mergedregion) == "dma_rank")
+finish <- which(names(mergedregion) == "gd_rank")
+start2 <- which(names(mergedregion) == "average_score")
+finish2 <- which(names(mergedregion) == "average_gd")
+sequence = seq(start,finish,1)
+sequence2 = seq(start2,finish2,1)
+  
+regcorrelation_matrix = matrix(NA, length(regindicatorlist), length(sequence))
+regcorrelation_matrix2 = matrix(NA, length(regindicatorlist), length(sequence2))
+
+for (i in 1:length(regindicatorlist)) {
+  mergedregion0 <- mergedregion %>%
+    filter(indicator == regindicatorlist[i])
+  
+  for (j in start:finish) {
+    eispos <- which(names(mergedregion0) == "eis_rank")
+    eispos2 <- which(names(mergedregion0) == "eis_value")
+    j2 <- sequence2[which(sequence == j)]
+    
+    # Ensure that columns are extracted as vectors
+    mergedregion0$risdmaabsdist <- abs(mergedregion0[[eispos]] - mergedregion0[[j]])
+    mergedregion0$risdmadist <- mergedregion0[[eispos]] - mergedregion0[[j]]
+    
+    # Check for missing values
+    if (any(is.na(mergedregion0$risdmaabsdist)) || any(is.na(mergedregion0$risdmadist))) {
+      warning("Missing values in risdmaabsdist or risdmadist.")
+    } else {
+      #hist(mergedregion0$risdmaabsdist, main = paste0("Absolute difference with ", regindicatorlist[i]))
+      #hist(mergedregion0$risdmadist, main = paste0("Difference with ", regindicatorlist[i]))
+      
+      regcorrelationrank = cor(mergedregion0[[eispos]], mergedregion0[[j]])
+      regcorrelation = cor(mergedregion0[[eispos2]], mergedregion0[[j2]])
+      #print(paste0("The correlation between ", names(mergedregion0)[j], " and ", regindicatorlist[i], " is: ", regcorrelationrank))
+      regcorrelation_matrix[i, which(sequence == j)] = regcorrelationrank
+      
+      #print(paste0("The correlation between ", names(mergedregion0)[j2], " and ", regindicatorlist[i], " is: ", regcorrelation))
+      regcorrelation_matrix2[i, which(sequence2 == j2)] = regcorrelation
+    }
+  }
+}
+
+
+############
+## now for the structural part 
+
+
+start <- which(names(mergedstruct) == "eis_value")
+finish <- which(names(mergedstruct) == "average_gd")
+todolist <- seq(start, finish, 1)
+
+namestoadd = c("eis_rank",
+               "dma_rank",
+               "dbs_rank",
+               "dr_rank",
+               "dg_rank",
+               "hcd_rank",
+               "aai_rank",
+               "gd_rank"
+               )
+
+for (i in start:finish) {
+  j <- which(todolist == i)
+  col_name <- namestoadd[j]
+
+  mergedstruct <- mergedstruct %>%
+    group_by(indicator) %>%
+    mutate(!!col_name := dense_rank(desc(!!sym(names(mergedstruct)[i]))))
+}
+
+a3=table(mergedstruct$indicator)
+a3=data.frame(a3)
+library(tidyr)
+transposed_a3 <- spread(a3, key = Var1, value = Freq)
+structindicatorlist <- names(transposed_a3)
+
+
+
+
+library(corrplot)
+
+start <- which(names(mergedstruct) == "dma_rank")
+finish <- which(names(mergedstruct) == "gd_rank")
+start2 <- which(names(mergedstruct) == "average_score")
+finish2 <- which(names(mergedstruct) == "average_gd")
+sequence = seq(start,finish,1)
+sequence2 = seq(start2,finish2,1)
+  
+correlation_matrix_struct = matrix(NA, length(structindicatorlist), length(sequence))
+correlation_matrix_struct2 = matrix(NA, length(structindicatorlist), length(sequence2))
+
+for (i in 1:length(structindicatorlist)) {
+  mergedstruct0 <- mergedstruct %>%
+    filter(indicator == structindicatorlist[i])
+  
+  for (j in start:finish) {
+    eispos <- which(names(mergedstruct0) == "eis_rank")
+    eispos2 <- which(names(mergedstruct0) == "eis_value")
+    j2 <- sequence2[which(sequence == j)]
+    
+    # Ensure that columns are extracted as vectors
+    mergedstruct0$risdmaabsdist <- abs(mergedstruct0[[eispos]] - mergedstruct0[[j]])
+    mergedstruct0$risdmadist <- mergedstruct0[[eispos]] - mergedstruct0[[j]]
+    
+    # Check for missing values
+    if (any(is.na(mergedstruct0$risdmaabsdist)) || any(is.na(mergedstruct0$risdmadist))) {
+      warning("Missing values in risdmaabsdist or risdmadist.")
+    } else {
+      #hist(mergedstruct0$risdmaabsdist, main = paste0("Absolute difference with ", structindicatorlist[i]))
+      #hist(mergedstruct0$risdmadist, main = paste0("Difference with ", structindicatorlist[i]))
+      
+      correlationrank = cor(mergedstruct0[[eispos]], mergedstruct0[[j]])
+      correlation = cor(mergedstruct0[[eispos2]], mergedstruct0[[j2]])
+      #print(paste0("The correlation between ", names(mergedstruct0)[j], " and ", structindicatorlist[i], " is: ", correlationrank))
+      correlation_matrix_struct[i, which(sequence == j)] = correlationrank
+      
+      #print(paste0("The correlation between ", names(mergedstruct0)[j2], " and ", structindicatorlist[i], " is: ", correlation))
+      correlation_matrix_struct2[i, which(sequence2 == j2)] = correlation
+    }
+  }
+}
+
+
+
+
+```
+
+
+```{r p1, fig.height=24, fig.width=20}
+rownames(correlation_matrix) = indicatorlist
+colnames(correlation_matrix) = namestoadd[-c(1)]
+# Create the correlation graph
+corrplot(correlation_matrix, method = "number")
+
+
+rownames(correlation_matrix2) = indicatorlist
+colnames(correlation_matrix2) = names(merged0[sequence2])
+# Create the correlation graph
+corrplot(correlation_matrix2, method = "number")
+
+
+
+# region by region
+
+
+rownames(regcorrelation_matrix) = regindicatorlist
+colnames(regcorrelation_matrix) = namestoadd[-c(1)]
+# Create the correlation graph
+corrplot(regcorrelation_matrix, method = "number")
+
+
+rownames(regcorrelation_matrix2) = regindicatorlist
+colnames(regcorrelation_matrix2) = names(mergedregion0[sequence2])
+# Create the correlation graph
+corrplot(regcorrelation_matrix2, method = "number")
+
+
+## structural correlations
+
+rownames(correlation_matrix_struct) = structindicatorlist
+colnames(correlation_matrix_struct) = namestoadd[-c(1)]
+# Create the correlation graph
+corrplot(correlation_matrix_struct, method = "number")
+
+
+rownames(correlation_matrix_struct2) = structindicatorlist
+colnames(correlation_matrix_struct2) = names(mergedstruct0[sequence2])
+# Create the correlation graph
+corrplot(correlation_matrix_struct2, method = "number")
+```
+

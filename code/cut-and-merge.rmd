@@ -1,0 +1,2627 @@
+---
+title: "DigINNOVA - DMA Analysis"
+author: "Federico Vicentini"
+date: "05/10/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+
+# LINE ADDED TO USE R 4.0 INSTEAD OF 4.3
+# Specify the path to the desired version of R
+# Sys.setenv(PATH = paste0("C:/Program Files/R/R-4.0.5/bin;", Sys.getenv("PATH")))
+
+
+knitr::opts_chunk$set(echo = TRUE)
+
+# Clear the variables
+rm(list = ls())
+
+# Increase memory limit to 32 GB
+memory.limit(size = 32000)
+
+# Install packages
+packages <- c("rstudioapi", "ggplot2", "readxl", "corrplot", "dplyr", 
+              "stargazer", "data.table", "stringdist", 
+              "progress", "rlang", "openxlsx",
+              "stringi", "cowplot", "gridExtra",
+              "stats", "mfx", "MASS", "AER", "caret",
+              "detectseparation", "randomForest",
+              "partykit", "tree", "tidyr", "margins",
+              "factoextra", "missMDA", "reshape2",
+              "geosphere", "RANN", "pscl",
+              "pROC", "car", "caret", "broom", "dplyr",
+              "xtable")
+new.packages <- packages[!(packages %in% installed.packages()[, "Package"])]
+if (length(new.packages)) install.packages(new.packages)
+invisible(lapply(packages, library, character.only = TRUE))
+
+# Set the working directory to source file location with
+# setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+```
+
+
+
+```{r main, include = TRUE, echo = FALSE, warning=FALSE, dev="svg"}
+
+workdir <- dirname(getwd())
+
+datafolder <- paste0(workdir, "/Data")
+
+outputfolder <- paste0(workdir, "/Output")
+
+
+dmadata <- data.frame(read_excel(paste0(datafolder,"/clean-raw-data-sme.xlsx")))
+
+scoresdata <- data.frame(read_excel(paste0(datafolder,"/clean-sme-scores.xlsx")))
+
+wrdsorbisdata <- data.frame(read_excel(paste0(datafolder,"/DMA_Orbis_wrds.xlsx")))
+
+# Count occurrences by sme_name
+sme_name_counts <- dmadata %>%
+  group_by(sme_name) %>%
+  tally()
+
+# Create histogram of the "n" (count) column
+hist(sme_name_counts$n)
+
+# Count unique bvdid
+unique_bvdid_count <- n_distinct(wrdsorbisdata$bvdid)
+print(unique_bvdid_count)
+
+
+# Filter only time 0 observations
+
+dmadata <- dmadata %>%
+  filter(time==0)
+
+
+# Select distinct observations based on sme_name and time
+dmadata <- dmadata %>%
+  distinct(sme_name, time, .keep_all = TRUE)
+
+
+# Set names for wrdsorbisdata columns 
+names(wrdsorbisdata)<-c("bvd_id",
+                        "size",
+                        "country_isocode",
+                        "date",
+                        "fixed_assets",
+                        "intangible_fixed_assets",
+                        "tangible_fixed_assets",
+                        "other_fixed_assets",
+                        "current_assets",
+                        "stock",
+                        "debtors",
+                        "other_current_assets",
+                        "cash_and_equivalent",
+                        "total_assets",
+                        "shareholders_funds",
+                        "capital",
+                        "other_shareholders_funds",
+                        "non_current_liabilities",
+                        "long_term_debt",
+                        "other_non_current_liabilities",
+                        "loans",
+                        "creditors",
+                        "other_current_liabilities",
+                        "total_shareholders_funds_and_liabilities",
+                        "employees",
+                        "operating_revenue_turnover",
+                        "sales",
+                        "cost_goods_sold",
+                        "gross_profit",
+                        "other_operating_expenses",
+                        "operating_prof_loss_ebit",
+                        "financial_prof_loss",
+                        "prof_loss_before_tax",
+                        "prof_loss_after_tax",
+                        "prof_loss_period_netincome",
+                        "roe_using_prof_loss_before_tax",
+                        "roa_using_prof_loss_before_tax",
+                        "roe_using_netincome",
+                        "roa_using_netincome",
+                        "profit_margin",
+                        "gross_margin",
+                        "ebitda_margin",
+                        "ebit_margin",
+                        "net_assets_turnover",
+                        "collection_period",
+                        "credit_period",
+                        "current_ratio",
+                        "liquidity_ratio",
+                        "shareholders_liquidity_ratio",
+                        "solvency_ratio_assetbased",
+                        "gearing",
+                        "profit_per_employee",
+                        "operating_revenue_per_employee",
+                        "shareholders_funds_per_employee",
+                        "total_assets_per_employee",
+                        "short_term_debt_net",
+                        "status",
+                        "listed_delisted_unlisted",
+                        "name_internat",
+                        "address1",
+                        "city",
+                        "nuts1",
+                        "nuts2",
+                        "nuts3",
+                        "lat",
+                        "lon")
+
+
+legacydmadata <- dmadata
+
+correspondence <- read_excel(paste0(datafolder,"/correspondence_table_vat_bvdid.xlsx"))
+
+dmadata <- merge(dmadata, correspondence, by = "fiscal_code", all.x=TRUE)
+
+
+
+
+matches_path <- paste0(datafolder,"/Orbis-Matches_CLEANED.xlsx")
+legacymatches <- read_excel(matches_path)
+
+matchesdmamerge <- merge(legacydmadata, legacymatches, by="sme_name")
+
+wrdsorbisdmamerge <- merge(matchesdmamerge, wrdsorbisdata, by.x = "bvdid", by.y="bvd_id")
+
+wrdsorbisdmamerge <- data.frame(wrdsorbisdmamerge)
+
+
+names(wrdsorbisdmamerge)[1]<- "bvd_id"
+
+
+
+#calcola la percentuale di nas per ogni colonna
+
+# Function to compute proportion of NA values for a column
+compute_na_proportion <- function(col) {
+  na_count <- sum(is.na(col))
+  return(na_count / length(col))
+}
+
+
+
+# we do the same for the wrds data
+
+# Apply the function to every column in the data frame
+wrds_na_proportions <- sapply(wrdsorbisdmamerge, compute_na_proportion)
+
+# Convert the result to a data frame
+wrds_na_proportions <- data.frame(Column = names(wrds_na_proportions), Proportion_NA = wrds_na_proportions)
+
+hist(wrds_na_proportions[,2]) 
+
+
+wrds_na_proportions_filt <- wrds_na_proportions %>%
+    group_by(Proportion_NA) %>%
+    filter(Proportion_NA<=0.3)
+
+
+
+
+
+
+# chunk_size <- 35000000  # Adjust the chunk size as needed
+# orbisuniverse <- fread("Orbis-eu-universe-only-18-countries.csv", data.table=FALSE, nrow=chunk_size)
+
+
+list_isocodes <- c("LT", "LV", "ES", "GR", "FR", "FI", "SI", "EE", "IT", "NL",
+                   "DE", "AT", "DK", "IE", "BE", "HR", "BG", "CZ")
+list_nutscodes <- c("LT", "LV", "ES", "EL", "FR", "FI", "SI", "EE", "IT", "NL",
+                    "DE", "AT", "DK", "IE", "BE", "HR", "BG", "CZ")
+path_list<- c("Orbis-LT-Universe.csv",
+              "Orbis-LV-Universe.csv",
+              "Orbis-ES-Universe.csv",
+              "Orbis-GR-Universe.csv",
+              "Orbis-FR-Universe.csv",
+              "Orbis-FI-Universe.csv",
+              "Orbis-SI-Universe.csv",
+              "Orbis-EE-Universe.csv",
+              "Orbis-IT-Universe.csv",
+              "Orbis-NL-Universe.csv",
+              "Orbis-DE-Universe.csv",
+              "Orbis-AT-Universe.csv",
+              "Orbis-DK-Universe.csv",
+              "Orbis-IE-Universe.csv",
+              "Orbis-BE-Universe.csv",
+              "Orbis-HR-Universe.csv",
+              "Orbis-BG-Universe.csv",
+              "Orbis-CZ-Universe.csv")
+
+
+# here was the loading of every universe file inside the memory
+# now fortunately is found only in the matching code
+
+
+###################################################
+########   THE MATCHING PART ######################
+################################################### 
+
+
+
+matches <- data.frame(
+  Observation_Name = character(),
+  Company_Name = character(),
+  Distance = numeric(),
+  stringsAsFactors = FALSE
+)
+
+singlematches <- data.frame(
+  Observation_Name = character(),
+  Company_Name = character(),
+  Distance = numeric(),
+  stringsAsFactors = FALSE
+)
+
+library(stringi)
+
+matches_path <- paste0(datafolder,"/Orbis-Matches_CLEANED.xlsx")
+previous_matches <- read_excel(matches_path)
+
+names(previous_matches) <- c("sme_name",
+                             "orbis_name",
+                             "fiscal_code",
+                             "bvdid",
+                             "country",
+                             "country_code",
+                             "distance",
+                             "is_match")
+
+###################################
+### MATCHING LOOP ITSELF!!!! ######
+###################################
+
+
+# here was the matching loop, now fortunately it rests in another rmd file to not
+# slow down everything
+
+
+
+#################################################
+#### SOME BASIC ANALYSIS TREAT vs CONTROLS ######
+#################################################
+
+# here lied some creation of productivity variables that in the end we are not using
+
+# and also some correlation matrices creation, now redudndant
+
+
+
+bvdid_nace_wrds <- read_excel(paste0(datafolder,"/bvdid_nace_wrds.xlsx"))
+
+names(bvdid_nace_wrds) <- c("bvdid",
+                            "nace")
+
+bvdid_nace_wrds$nace <- as.numeric(bvdid_nace_wrds$nace)
+
+bvdid_nace_wrds <- bvdid_nace_wrds[!is.na(bvdid_nace_wrds$nace),]
+
+bvdid_nace_wrds$nace2digit <- as.numeric(substr(bvdid_nace_wrds$nace, 1, 2))
+
+hist(bvdid_nace_wrds$nace2digit, breaks=seq(0,100,1))
+
+
+filepath = paste0(datafolder,"/nace_sectornames.txt")
+nace_sectornames <- read.csv(filepath, sep = ";" )
+
+
+bvdid_nace_wrds <- merge(bvdid_nace_wrds, nace_sectornames, by.x="nace2digit", by.y="nace")
+
+# hist(bvdid_nace_wrds$sector, breaks=seq(0,100,1))
+
+sectordata = data.frame(table(bvdid_nace_wrds$sector))
+
+bar_chart <- ggplot(sectordata, aes(x = reorder(Var1, -Freq), y = Freq)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = Freq), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "DMA Replies by Country", x = "", y = "Frequency") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+# print(bar_chart)
+
+ggsave(paste0(outputfolder, "/sectorsplot.png"), bar_chart, dpi = 300, width = 10, height = 5.6)
+
+macrosectordata = data.frame(table(bvdid_nace_wrds$macrosector))
+
+bar_chart <- ggplot(macrosectordata, aes(x = reorder(Var1, -Freq), y = Freq)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = Freq), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "DMA Replies by Country", x = "", y = "Frequency") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+# print(bar_chart)
+
+ggsave(paste0(outputfolder, "/macrosectorsplot.png"), bar_chart, dpi = 300, width = 10, height = 5.6)
+
+
+##########################
+# HERE WE DO THE SAME THING, BUT FOR THE UNTREATED SAMPLE
+
+bvdid_nace_wrds_untreated <- read_excel(paste0(datafolder,"/bvdid_nace_wrds_untreated_WEIGHTED.xlsx"))
+
+bvdid_nace_wrds_untreated <- bvdid_nace_wrds_untreated[,c(1,3)]
+
+names(bvdid_nace_wrds_untreated) <- c("bvdid",
+                            "nace")
+
+bvdid_nace_wrds_untreated$nace <- as.numeric(bvdid_nace_wrds_untreated$nace)
+
+bvdid_nace_wrds_untreated <- bvdid_nace_wrds_untreated[!is.na(bvdid_nace_wrds_untreated$nace),]
+
+bvdid_nace_wrds_untreated$nace2digit <- as.numeric(substr(bvdid_nace_wrds_untreated$nace, 1, 2))
+
+hist(bvdid_nace_wrds_untreated$nace2digit, breaks=seq(0,100,1))
+
+
+nace_sectornames <- read.csv(paste0(datafolder,"/nace_sectornames.txt"), sep=";")
+
+
+bvdid_nace_wrds_untreated <- merge(bvdid_nace_wrds_untreated, nace_sectornames, by.x="nace2digit", by.y="nace")
+
+# hist(bvdid_nace_wrds_untreated$sector, breaks=seq(0,100,1))
+
+sectordata = data.frame(table(bvdid_nace_wrds_untreated$sector))
+
+
+bar_chart <- ggplot(sectordata, aes(x = reorder(Var1, -Freq), y = Freq)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = Freq), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "DMA Replies by Country", x = "", y = "Frequency") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+# print(bar_chart)
+
+ggsave(paste0(outputfolder, "/sectorsplot_untreated.png"), bar_chart, dpi = 300, width = 10, height = 5.6)
+
+
+macrosectordata = data.frame(table(bvdid_nace_wrds_untreated$macrosector))
+
+bar_chart <- ggplot(macrosectordata, aes(x = reorder(Var1, -Freq), y = Freq)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = Freq), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "DMA Replies by Country", x = "", y = "Frequency") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+# print(bar_chart)
+
+ggsave(paste0(outputfolder, "/macrosectorsplot_untreated.png"), bar_chart, dpi = 300, width = 10, height = 5.6)
+
+
+
+
+###################################################
+## PLOTTING DISTRIBUTIONS BUT ONLY FOR THE SECTORS
+
+
+# Function to create relative frequency bar plot for a specific variable
+plot_relative_distribution_optimized <- function(df1, df2, variable) {
+  # Add a label to distinguish between the two dataframes
+  df1 <- df1 %>%
+    mutate(source = "Treated")
+  
+  df2 <- df2 %>%
+    mutate(source = "Untreated")
+  
+  # Combine the dataframes
+  combined_df <- bind_rows(df1, df2)
+  
+  # Calculate relative frequencies
+  relative_df <- combined_df %>%
+    group_by(source) %>%
+    count(!!sym(variable)) %>%
+    mutate(relative_freq = n / sum(n)) %>%
+    ungroup()
+  
+  # Create the plot
+  p <- ggplot(relative_df, aes_string(x = variable, y = "relative_freq", fill = "source")) +
+    geom_bar(stat = "identity", position = "dodge", alpha = 0.7) +
+    labs(title = paste("Relative Distribution of", variable, "in Treated and Untreated Datasets"),
+         x = "", y = "") +
+    theme_minimal() +
+    scale_fill_manual(values = c("Treated" = "blue", "Untreated" = "red")) +
+    theme(axis.text.x = element_text(angle = 75, hjust = 1, face="bold"))
+  
+  return(p)
+}
+
+# Define a mapping of full macrosector names to their abbreviations
+macrosector_abbreviations <- c(
+  "Manufacturing" = "Manufacturing",
+  "Services" = "Services",
+  "Agriculture, forestry and fishing" = "Agric. & Fish",
+  "Construction" = "Construction",
+  "Wholesale and retail trade" = "Retail & Wholesale",
+  "Transportation and storage" = "Logistics",
+  "Information and communication" = "Telecomm.",
+  "Financial and insurance activities" = "Fin. & Ins.",
+  "Real estate activities" = "Real Estate",
+  "Professional, scientific and technical activities" = "Prof., Sci. & Tech.",
+  "Administrative and support service activities" = "Administration",
+  "Education" = "Education",
+  "Human health and social work activities" = "Health",
+  "Arts, entertainment and recreation" = "Arts & Entertainment",
+  "Other service activities" = "Other Services"
+)
+
+# Apply the abbreviations to the macrosector column in bvdid_nace_wrds
+bvdid_nace_wrds$macrosector[bvdid_nace_wrds$macrosector == " Manufacturing"] <- "Manufacturing"
+bvdid_nace_wrds$macrosector[bvdid_nace_wrds$macrosector == " Services"] <- "Services"
+bvdid_nace_wrds$macrosector[bvdid_nace_wrds$macrosector == " Agriculture, forestry and fishing"] <- "Agric. & Fish"
+bvdid_nace_wrds$macrosector[bvdid_nace_wrds$macrosector == " Construction"] <- "Construction"
+bvdid_nace_wrds$macrosector[bvdid_nace_wrds$macrosector == " Wholesale and retail trade, repair of vehicles"] <- "Retail & Wholesale"
+bvdid_nace_wrds$macrosector[bvdid_nace_wrds$macrosector == " Transportation and storage"] <- "Logistics"
+bvdid_nace_wrds$macrosector[bvdid_nace_wrds$macrosector == " Information and communication"] <- "Telecomm."
+bvdid_nace_wrds$macrosector[bvdid_nace_wrds$macrosector == " Financial and insurance"] <- "Fin. & Ins."
+bvdid_nace_wrds$macrosector[bvdid_nace_wrds$macrosector == " Real estate"] <- "Real Estate"
+bvdid_nace_wrds$macrosector[bvdid_nace_wrds$macrosector == " Professional, scientific and technical activities"] <- "Prof., Sci. & Tech."
+bvdid_nace_wrds$macrosector[bvdid_nace_wrds$macrosector == " Administrative and support services activities"] <- "Administration"
+bvdid_nace_wrds$macrosector[bvdid_nace_wrds$macrosector == " Education"] <- "Education"
+bvdid_nace_wrds$macrosector[bvdid_nace_wrds$macrosector == " Human health and social work activities"] <- "Health"
+bvdid_nace_wrds$macrosector[bvdid_nace_wrds$macrosector == " Arts, entertainment and recreation"] <- "Arts & Entertainment"
+bvdid_nace_wrds$macrosector[bvdid_nace_wrds$macrosector == " Other service activities"] <- "Other Services"
+bvdid_nace_wrds$macrosector[bvdid_nace_wrds$macrosector == " Electricity, gas, stean and ac supply"] <- "Utilities"
+bvdid_nace_wrds$macrosector[bvdid_nace_wrds$macrosector == " Public administration and defence, compulsory social sec"] <- "Public Admin."
+bvdid_nace_wrds$macrosector[bvdid_nace_wrds$macrosector == " Water supply, sewerage, waste mgmgt and remediation act"] <- "Water & Waste"
+bvdid_nace_wrds$macrosector[bvdid_nace_wrds$macrosector == " Accomodation and food services act"] <- "Accommodation & Food"
+bvdid_nace_wrds$macrosector[bvdid_nace_wrds$macrosector == " Activites of extraterritorial organisations and bodies"] <- "International Org."
+
+
+# Apply the abbreviations to the macrosector column in bvdid_nace_wrds_untreated
+bvdid_nace_wrds_untreated$macrosector[bvdid_nace_wrds_untreated$macrosector == " Manufacturing"] <- "Manufacturing"
+bvdid_nace_wrds_untreated$macrosector[bvdid_nace_wrds_untreated$macrosector == " Services"] <- "Services"
+bvdid_nace_wrds_untreated$macrosector[bvdid_nace_wrds_untreated$macrosector == " Agriculture, forestry and fishing"] <- "Agric. & Fish"
+bvdid_nace_wrds_untreated$macrosector[bvdid_nace_wrds_untreated$macrosector == " Construction"] <- "Construction"
+bvdid_nace_wrds_untreated$macrosector[bvdid_nace_wrds_untreated$macrosector == " Wholesale and retail trade, repair of vehicles"] <- "Retail & Wholesale"
+bvdid_nace_wrds_untreated$macrosector[bvdid_nace_wrds_untreated$macrosector == " Transportation and storage"] <- "Logistics"
+bvdid_nace_wrds_untreated$macrosector[bvdid_nace_wrds_untreated$macrosector == " Information and communication"] <- "Telecomm."
+bvdid_nace_wrds_untreated$macrosector[bvdid_nace_wrds_untreated$macrosector == " Financial and insurance"] <- "Fin. & Ins."
+bvdid_nace_wrds_untreated$macrosector[bvdid_nace_wrds_untreated$macrosector == " Real estate"] <- "Real Estate"
+bvdid_nace_wrds_untreated$macrosector[bvdid_nace_wrds_untreated$macrosector == " Professional, scientific and technical activities"] <- "Prof., Sci. & Tech."
+bvdid_nace_wrds_untreated$macrosector[bvdid_nace_wrds_untreated$macrosector == " Administrative and support services activities"] <- "Administration"
+bvdid_nace_wrds_untreated$macrosector[bvdid_nace_wrds_untreated$macrosector == " Education"] <- "Education"
+bvdid_nace_wrds_untreated$macrosector[bvdid_nace_wrds_untreated$macrosector == " Human health and social work activities"] <- "Health"
+bvdid_nace_wrds_untreated$macrosector[bvdid_nace_wrds_untreated$macrosector == " Arts, entertainment and recreation"] <- "Arts & Entertainment"
+bvdid_nace_wrds_untreated$macrosector[bvdid_nace_wrds_untreated$macrosector == " Other service activities"] <- "Other Services"
+bvdid_nace_wrds_untreated$macrosector[bvdid_nace_wrds_untreated$macrosector == " Electricity, gas, stean and ac supply"] <- "Utilities"
+bvdid_nace_wrds_untreated$macrosector[bvdid_nace_wrds_untreated$macrosector == " Public administration and defence, compulsory social sec"] <- "Public Admin."
+bvdid_nace_wrds_untreated$macrosector[bvdid_nace_wrds_untreated$macrosector == " Water supply, sewerage, waste mgmgt and remediation act"] <- "Water & Waste"
+bvdid_nace_wrds_untreated$macrosector[bvdid_nace_wrds_untreated$macrosector == " Accomodation and food services act"] <- "Accommodation & Food"
+bvdid_nace_wrds_untreated$macrosector[bvdid_nace_wrds_untreated$macrosector == " Activites of extraterritorial organisations and bodies"] <- "International Org."
+
+
+
+
+# Plot the relative distribution of 'sector'
+plot_sector <- plot_relative_distribution_optimized(bvdid_nace_wrds, bvdid_nace_wrds_untreated, "sector")
+# print(plot_sector)
+
+ggsave(paste0(outputfolder, "/sectorsplot_compared.png"), plot_sector, dpi = 300, width = 10, height = 5.6, bg = "white")
+
+
+# Plot the relative distribution of 'macrosector'
+plot_macrosector <- plot_relative_distribution_optimized(bvdid_nace_wrds, bvdid_nace_wrds_untreated, "macrosector")
+# print(plot_macrosector)
+
+ggsave(paste0(outputfolder, "/macrosectorsplot_compared.png"), plot_macrosector, dpi = 300, width = 10, height = 5.6, bg = "white")
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Assuming your data is called "data"
+wrdsorbisdata_recent <- wrdsorbisdata %>%
+  group_by(bvd_id) %>%
+  arrange(desc(date)) %>%  # Arrange by date in descending order (newest first)
+  slice_head(n=1)  
+
+
+wrdsorbisdata_recent <- merge(wrdsorbisdata_recent, bvdid_nace_wrds, by.x="bvd_id", by.y ="bvdid")
+
+
+
+countrydata = data.frame(table(wrdsorbisdata_recent$country_isocode))
+
+bar_chart <- ggplot(countrydata, aes(x = reorder(Var1, -Freq), y = Freq)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = Freq), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "DMA Replies by Country", x = "", y = "Frequency") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+# print(bar_chart)
+
+ggsave(paste0(outputfolder, "/treatedobs_bycountry.png"), bar_chart, dpi = 300, width = 10, height = 5.6)
+
+
+
+#############################################
+#### UNTREATED SAMPLE CREATION ##############
+#############################################
+
+
+# here was creation of the sample of untreated firms, now moved to specific rmd file
+
+
+untreated_wrds <- read_excel(paste0(datafolder,"/untreated_sample_WEIGHTED.xlsx"), guess_max = 100000)
+
+names(untreated_wrds)<-c("bvdid",
+                        "size",
+                        "country_isocode",
+                        "date",
+                        "fixed_assets",
+                        "intangible_fixed_assets",
+                        "tangible_fixed_assets",
+                        "other_fixed_assets",
+                        "current_assets",
+                        "stock",
+                        "debtors",
+                        "other_current_assets",
+                        "cash_and_equivalent",
+                        "total_assets",
+                        "shareholders_funds",
+                        "capital",
+                        "other_shareholders_funds",
+                        "non_current_liabilities",
+                        "long_term_debt",
+                        "other_non_current_liabilities",
+                        "loans",
+                        "creditors",
+                        "other_current_liabilities",
+                        "total_shareholders_funds_and_liabilities",
+                        "employees",
+                        "operating_revenue_turnover",
+                        "sales",
+                        "cost_goods_sold",
+                        "gross_profit",
+                        "other_operating_expenses",
+                        "operating_prof_loss_ebit",
+                        "financial_prof_loss",
+                        "prof_loss_before_tax",
+                        "prof_loss_after_tax",
+                        "prof_loss_period_netincome",
+                        "roe_using_prof_loss_before_tax",
+                        "roa_using_prof_loss_before_tax",
+                        "roe_using_netincome",
+                        "roa_using_netincome",
+                        "profit_margin",
+                        "gross_margin",
+                        "ebitda_margin",
+                        "ebit_margin",
+                        "net_assets_turnover",
+                        "collection_period",
+                        "credit_period",
+                        "current_ratio",
+                        "liquidity_ratio",
+                        "shareholders_liquidity_ratio",
+                        "solvency_ratio_assetbased",
+                        "gearing",
+                        "profit_per_employee",
+                        "operating_revenue_per_employee",
+                        "shareholders_funds_per_employee",
+                        "total_assets_per_employee",
+                        "short_term_debt_net",
+                        "status",
+                        "listed_delisted_unlisted",
+                        "name_internat",
+                        "address1",
+                        "city",
+                        "nuts1",
+                        "nuts2",
+                        "nuts3",
+                        "lat",
+                        "lon")
+
+
+
+# Assuming your data is called "data"
+wrdsorbisdmamerge_recent <- wrdsorbisdmamerge %>%
+  group_by(bvd_id) %>%
+  arrange(desc(date)) %>%  # Arrange by date in descending order (newest first)
+  slice_head(n=1)            # Keep only the first row (most recent)
+
+
+
+
+plot_na_proportions <- function(data) {
+  # Create a data frame to store the proportion of NAs for each variable
+  na_proportions <- data.frame(
+    variable = names(data),
+    na_proportion = sapply(data, function(x) mean(is.na(x)))
+  )
+  
+  # Reorder the data frame based on the original column order
+  na_proportions$variable <- factor(na_proportions$variable, levels = na_proportions$variable)
+  
+  # Plot the ordered bar graph
+  ggplot(na_proportions, aes(x = variable, y = na_proportion)) +
+    geom_bar(stat = "identity", fill = "skyblue") +
+    labs(title = "Proportion of NAs in Each Variable",
+         x = "Variable",
+         y = "Proportion of NAs") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+}
+
+# Example usage with wrdsorbisdmamerge
+plot_na_proportions(wrdsorbisdmamerge)
+plot_na_proportions(wrdsorbisdmamerge_recent)
+plot_na_proportions(wrdsorbisdata_recent)
+
+
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r plotting distribution graphs, include = TRUE, echo = FALSE, warning=FALSE, dev="svg"}
+
+
+plot_distributions <- function(variable_name, log_transform = TRUE, display_plots = 1) {
+  # Create an empty list to store plots
+  plot_list <- list()
+  
+  # Loop through each country
+  for (i in seq_along(list_isocodes)) {
+    # Filter data for the current country in both dataframes
+    treated_data <- subset(wrdsorbisdmamerge_recent, country_isocode == list_isocodes[i])
+    untreated_data <- subset(untreated_wrds, country_isocode == list_isocodes[i])
+    
+    # Remove rows with NA values in the variable
+    treated_data <- treated_data[!is.na(treated_data[[variable_name]]), ]
+    untreated_data <- untreated_data[!is.na(untreated_data[[variable_name]]), ]
+    
+    # Get the number of non-missing observations
+    n_treated <- nrow(treated_data)
+    n_control <- nrow(untreated_data)
+    
+    # Apply log transformation if specified and handle zeros
+    if (log_transform) {
+      treated_data[[variable_name]] <- log1p(treated_data[[variable_name]])
+      untreated_data[[variable_name]] <- log1p(untreated_data[[variable_name]])
+      x_label <- paste("log1p(", variable_name, ")", sep = "")
+    } else {
+      x_label <- variable_name
+    }
+    
+    # Check if there are enough observations for the KS test
+    if (n_treated >= 2 & n_control >= 2) {
+      # Perform Kolmogorov-Smirnov test
+      ks_test <- ks.test(treated_data[[variable_name]], untreated_data[[variable_name]])
+      p_value <- ks_test$p.value
+      
+      subtitle <- paste("KS Test p-value:", format(p_value, digits = 3), 
+                        "\nTreated N:", n_treated, "Control N:", n_control)
+    } else {
+      p_value <- NA
+      subtitle <- paste("Insufficient data for KS Test",
+                        "\nTreated N:", n_treated, "Control N:", n_control)
+    }
+    
+    # Create a density histogram with overlaid density estimates
+    p <- ggplot() +
+      geom_histogram(data = treated_data, aes_string(x = variable_name, y = '..density..', fill = "'Treated'"), 
+                     alpha = 0.5, position = 'identity', bins = 30) +
+      geom_histogram(data = untreated_data, aes_string(x = variable_name, y = '..density..', fill = "'Control'"), 
+                     alpha = 0.5, position = 'identity', bins = 30) +
+      geom_density(data = treated_data, aes_string(x = variable_name, color = "'Treated'"), 
+                   adjust = 1, size = 1) +
+      geom_density(data = untreated_data, aes_string(x = variable_name, color = "'Control'"), 
+                   adjust = 1, size = 1) +
+      labs(title = paste("Distribution of", variable_name, "in", list_isocodes[i]),
+           x = x_label, fill = "Group", color = "Group",
+           subtitle = subtitle) +
+      theme_minimal() +
+      scale_fill_manual(values = c("Treated" = "blue", "Control" = "red")) +
+      scale_color_manual(values = c("Treated" = "blue", "Control" = "red"))
+    
+    # Add the plot to the list
+    plot_list[[i]] <- p
+
+    # Save each plot individually with the country code in the filename
+    ggsave(filename = paste(outputfolder, "/distrib_compare_", variable_name, "_", list_isocodes[i], ".png", sep = ""),
+           plot = p, dpi = 300, width = 10, height = 6, bg = "white")
+  }
+  
+  # Display the plots in a 2x2 grid layout if display_plots == 1
+  if (display_plots == 1) {
+    num_plots <- length(plot_list)
+    num_pages <- ceiling(num_plots / 4)
+    
+    for (page in seq_len(num_pages)) {
+      start_idx <- (page - 1) * 4 + 1
+      end_idx <- min(page * 4, num_plots)
+      grid_plots <- plot_list[start_idx:end_idx]
+      
+      # Display the current batch of plots in a 2x2 grid
+      grid.arrange(grobs = grid_plots, ncol = 2, nrow = 2)
+    }
+  }
+}
+
+
+level_mapping <- c("VERY LARGE COMPANY" = 4, "LARGE COMPANY" = 3, "MEDIUM SIZED COMPANY" = 2, "SMALL COMPANY" = 1)
+
+
+wrdsorbisdmamerge_recent$size_numeric <- level_mapping[wrdsorbisdmamerge_recent$size]
+untreated_wrds$size_numeric <- level_mapping[untreated_wrds$size]
+
+
+wrdsorbisdmamerge_recent <- wrdsorbisdmamerge_recent %>%
+  mutate(debtoverequity = (non_current_liabilities + creditors + loans + other_current_liabilities) / shareholders_funds)
+untreated_wrds <- untreated_wrds %>%
+  mutate(debtoverequity = (non_current_liabilities + creditors + loans + other_current_liabilities) / shareholders_funds)
+
+
+wrdsorbisdmamerge_recent <- wrdsorbisdmamerge_recent %>%
+  mutate(debtoverequity = (non_current_liabilities + creditors + loans + other_current_liabilities) / shareholders_funds)
+wrdsorbisdmamerge_recent <- wrdsorbisdmamerge_recent %>%
+  mutate(debtoverequity = (non_current_liabilities + creditors + loans + other_current_liabilities) / shareholders_funds)
+
+
+
+untreated_wrds$debtoverequity <- replace(untreated_wrds$debtoverequity, is.infinite(untreated_wrds$debtoverequity), NA)
+wrdsorbisdmamerge_recent$debtoverequity <- replace(wrdsorbisdmamerge_recent$debtoverequity, is.infinite(wrdsorbisdmamerge_recent$debtoverequity), NA)
+
+
+# Calculate IQR and define threshold
+Q1 <- quantile(untreated_wrds$debtoverequity, 0.25, na.rm=TRUE)
+Q3 <- quantile(untreated_wrds$debtoverequity, 0.75, na.rm=TRUE)
+IQR <- Q3 - Q1
+
+# Define lower bound threshold
+lower_bound <- Q1 - 1.5 * IQR
+
+# Calculate IQR and define threshold
+Q1 <- quantile(wrdsorbisdmamerge_recent$debtoverequity, 0.25, na.rm=TRUE)
+Q3 <- quantile(wrdsorbisdmamerge_recent$debtoverequity, 0.75, na.rm=TRUE)
+IQR <- Q3 - Q1
+
+# Define lower bound threshold
+lower_bound_treated <- Q1 - 1.5 * IQR
+
+
+untreated_wrds$debtoverequity <- replace(untreated_wrds$debtoverequity, untreated_wrds$debtoverequity < lower_bound, NA)
+wrdsorbisdmamerge_recent$debtoverequity <- replace(wrdsorbisdmamerge_recent$debtoverequity, wrdsorbisdmamerge_recent$debtoverequity<lower_bound_treated, NA)
+
+
+
+
+
+
+# Plot distribution of interesting variables for each country
+# highlighting the difference in distribution between treated
+# and untreated
+
+variable_names <- names(untreated_wrds)[c(5:55)]
+
+na_proportions_wrds <- data.frame(
+    variable = names(untreated_wrds),
+    na_proportion = sapply(untreated_wrds, function(x) mean(is.na(x)))
+  )
+
+na_wrds_cleaned <- na_proportions_wrds[na_proportions_wrds$na_proportion < 0.25,]
+
+variable_names_frequent <- variable_names[variable_names %in% na_wrds_cleaned$variable]
+
+# variable_name <- "debtoverequity"
+# plot_distributions(variable_name)
+
+for(i in 1:length(variable_names_frequent)){
+  variable_name <- variable_names_frequent[i]
+  # Display plots set to 0 below to not create a big RAM overwhelm
+  plot_distributions(variable_name, display_plots = 0)
+}
+
+wrdsorbisdmamerge_recent$treated <- 1
+untreated_wrds$treated <- 0
+
+
+# take out the addresses of the untreated sample to then geocode 
+# them with the geocoding-dma_Nominatim rmd file
+
+
+pos1 <- which(names(untreated_wrds) == "bvdid")
+pos2 <- which(names(untreated_wrds) == "address1")
+pos3 <- which(names(untreated_wrds) == "city")
+
+addresses_untreated <- untreated_wrds[,c(pos1,pos2, pos3)]
+
+addresses_untreated$address1 <- paste0(addresses_untreated$address1,", ", addresses_untreated$city)
+addresses_untreated <- addresses_untreated[, c(1,2)]
+names(addresses_untreated)[2] <- "address"
+
+addresses_untreated <- addresses_untreated %>% distinct()
+
+write.xlsx(addresses_untreated, paste0(outputfolder,"/clean-addresses-sample.xlsx"))
+
+
+treateduntreated <- rbind(wrdsorbisdmamerge_recent, untreated_wrds)
+treateduntreated <- data.frame(treateduntreated)
+
+# put all bvdids in bvdid
+treateduntreated <- treateduntreated %>%
+  mutate(bvdid = if_else(is.na(bvdid), bvd_id, bvdid))
+
+
+
+# propensity <- glm(treated ~ total_assets_per_employee + liquidity_ratio  + prof_loss_before_tax + debtoverequity + employees + laborprod + capitalprod, data=treateduntreated, family = binomial(link = "probit"))
+
+# stargazer(propensity, type="text")
+
+
+# # Fit the probit model and calculate marginal effects
+# probit_model <- probitmfx(treated ~ debtoverequity + total_assets + employees + laborprod + capitalprod, 
+#                           data = treateduntreated)
+
+# # Print the results
+# print(probit_model)
+
+
+
+
+
+
+
+
+
+treateduntreatedforselection <- treateduntreated[,-c(2:123,125,126,128,129,182:190,196)]
+
+# Identify single-level factor variables
+single_level_factors <- sapply(treateduntreatedforselection, function(x) {
+  if (is.factor(x)) {
+    return(length(levels(x)))
+  } else {
+    return(NA)
+  }
+})
+
+# Filter out non-factor variables (NAs)
+single_level_factors <- single_level_factors[!is.na(single_level_factors)]
+
+# Keep only variables with one level
+single_level_factors <- single_level_factors[single_level_factors == 1]
+
+# Print the names of single-level factor variables
+print("Single-level factors:")
+print(names(single_level_factors))
+
+# Identify single-level numeric variables
+single_level_numeric <- sapply(treateduntreatedforselection, function(x) {
+  if (is.numeric(x)) {
+    return(length(unique(x)))
+  } else {
+    return(NA)
+  }
+})
+
+# Filter out non-numeric variables (NAs)
+single_level_numeric <- single_level_numeric[!is.na(single_level_numeric)]
+
+# Keep only numeric variables with one unique value
+single_level_numeric <- single_level_numeric[single_level_numeric == 1]
+
+# Print the names of single-level numeric variables
+print("Single-level numeric variables:")
+print(names(single_level_numeric))
+
+# Combine single-level factors and numeric variables
+single_level_vars <- c(names(single_level_factors), names(single_level_numeric))
+print("All single-level variables to be removed:")
+print(single_level_vars)
+
+# Remove variables with only one level
+cleaned_data <- treateduntreatedforselection[ , !(names(treateduntreatedforselection) %in% single_level_vars)]
+
+# Check for columns with only NA values
+na_columns <- sapply(cleaned_data, function(x) all(is.na(x)))
+cleaned_data <- cleaned_data[, !na_columns]
+
+# Check and convert data types if necessary
+cleaned_data <- data.frame(lapply(cleaned_data, function(x) {
+  if (is.character(x)) {
+    return(as.factor(x))
+  } else {
+    return(x)
+  }
+}))
+
+
+```
+
+
+
+
+```{r cormatrix, echo = FALSE, warning=FALSE, message=FALSE, fig.height=40, fig.width=40, dev= 'svg'}
+# cormatrix <- cor(treateduntreated[,c(130:181, 192:196)], use = "pairwise.complete.obs")
+# corrplot(cormatrix, method = "number", )
+
+# plot_na_proportions(treateduntreated)
+
+# treatedcorr <- cormatrix[, length(rownames(cormatrix))]
+
+# sorted_treatedcorr <- sort(treatedcorr, decreasing = TRUE)
+
+# print(sorted_treatedcorr*100)
+
+
+```
+
+
+
+
+```{r cuttingsample,  echo = FALSE, warning=FALSE, message=FALSE, dev= 'svg' }
+
+nace_treateduntreated <- rbind(bvdid_nace_wrds, bvdid_nace_wrds_untreated)
+
+
+treateduntreated_nace <- merge(treateduntreated, nace_treateduntreated, by="bvdid")
+
+manufacturing <- treateduntreated_nace %>%
+    group_by(nace) %>%
+    filter(nace>=1000 & nace<=3000)
+
+
+treateduntreated_nace <- merge(treateduntreated, nace_treateduntreated, by.x="bvdid", by.y ="bvdid")
+
+treateduntreated_nace$nace2digit <- as.factor(treateduntreated_nace$nace2digit)
+
+
+
+# small_model <- glm(treated ~ macrosector + size + employees + total_assets + liquidity_ratio + debtoverequity, data = treateduntreated_nace, family = binomial(link = "probit"))
+
+# stargazer(small_model, type = "latex",  out = paste0(outputfolder, "/",deparse(substitute(model1)), ".tex"))
+
+# margins_model<- margins(small_model)
+
+# summary(margins_model)
+
+
+# Count occurrences by bvd_id
+bvd_id_counts <- wrdsorbisdmamerge %>%
+  group_by(bvd_id) %>%
+  tally()
+
+# Create histogram of the "n" (count) column
+hist(bvd_id_counts$n, breaks = seq(0,20,1))
+
+
+
+# Count occurrences by bvd_id
+bvd_id_counts <- treateduntreated %>%
+  group_by(bvdid) %>%
+  tally()
+
+# Create histogram of the "n" (count) column
+hist(bvd_id_counts$n, breaks = seq(0,20,1))
+
+# Function to get the first non-NA value, or the first value if all are NA
+first_non_na <- function(x) {
+  if (all(is.na(x))) {
+    return(NA)
+  } else {
+    return(first(na.omit(x)))
+  }
+}
+
+# Group by bvdid
+averages_treateduntreated_nace <- treateduntreated_nace %>%
+  group_by(bvdid) %>%
+  summarise(
+    across(where(is.numeric), ~ mean(.x, na.rm = TRUE)),  # Calculate mean of numeric variables, ignore NAs
+    across(where(is.character), first_non_na),  # Keep the first non-NA occurrence of non-numeric variables or NA if all are NA
+    bvdidpop = n()  # Count number of observations in each group
+  ) %>%
+  ungroup()  # Ungroup to return to regular data frame
+
+# averages_treateduntreated_nace$manufacturing <- ifelse(averages_treateduntreated_nace$macrosector == " Manufacturing", 1, 0)
+
+# small_model <- glm(treated ~ macrosector + size + employees + total_assets + liquidity_ratio + debtoverequity + solvency_ratio_assetbased, data = averages_treateduntreated_nace, family = binomial(link = "probit"))
+
+# stargazer(small_model, type = "latex",  out = paste0(outputfolder, "/",deparse(substitute(model1)), ".tex"))
+
+# margins_model<- margins(small_model)
+
+# summary(margins_model)
+
+
+
+
+
+# Function to classify sectors
+classify_macro_sector <- function(macrosector) {
+  if (macrosector >= 1000 & macrosector <= 3300) {
+    return("Manufacturing")
+  } else if (macrosector >= 4500 & macrosector <= 9900) {
+    return("Services")
+  } else {
+    return("Other")
+  }
+}
+
+# Apply the classification function to the dataframe
+averages_treateduntreated_nace$sector_type <- sapply(averages_treateduntreated_nace$nace, classify_macro_sector)
+
+high_tech <- c(seq(3030, 3039), 
+               seq(7200, 7299), 
+               seq(5820, 5829), 
+               seq(2100, 2199), 
+               seq(2600,2699))
+
+medium_high_tech <- c(seq(2520, 2529),
+                      seq(2900, 2999), 
+                      seq(3250, 3259), 
+                      seq(2800, 2899), 
+                      seq(2000, 2099), 
+                      seq(2700, 2799),
+                      seq(6200, 6399),
+                      seq(3020, 3029),
+                      seq(3040, 3049),
+                      seq(3090, 3099))
+
+medium_tech <- c(seq(2200, 2299),
+                 seq(3010, 3019),
+                 seq(3200, 3249),
+                 seq(3260, 3299),
+                 seq(2300, 2399),
+                 seq(2400, 2499),
+                 seq(3300, 3399))
+
+medium_low_tech <- c(seq(6900, 7199),
+                     seq(7300, 7599),
+                     seq(1300, 1399),
+                     seq(1500, 1599),
+                     seq(1700, 1799),
+                     seq(6100, 6199),
+                     seq(1000, 1299),
+                     seq(1400, 1499),
+                     seq(2500, 2519),
+                     seq(2539, 2599),
+                     seq(1900, 1999),
+                     seq(3100, 3199),
+                     seq(0500, 0999),
+                     seq(1600, 1699),
+                     seq(1800, 1899),
+                     seq(5810, 5819))
+
+
+
+# Function to classify sectors
+classify_tech_level <- function(macrosector) {
+  if (macrosector %in% high_tech) {
+    return("High")
+  } else if (macrosector %in% medium_high_tech) {
+    return("Medium-High")
+  } else if (macrosector %in% medium_tech) {
+    return("Medium")
+  } else if (macrosector %in% medium_low_tech) {
+    return("Medium-Low")
+  } else {
+    return("Low")
+  }
+}
+
+# Apply the classification function to the dataframe
+averages_treateduntreated_nace$tech_level <- sapply(averages_treateduntreated_nace$nace, classify_tech_level)
+
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r distancecomputations}
+
+
+# Loading in the jrc file that includes edih name and type
+smes_aggregate_scores <- read_excel(paste0(datafolder, "/my-smes-dma-results.xlsx"))
+
+names(smes_aggregate_scores) <- c("sme_name",
+                                  "fiscal_code",
+                                  "country",
+                                  "region",
+                                  "sector",
+                                  "size",
+                                  "time",
+                                  "assess_date",
+                                  "dmascore",
+                                  "dbscore",
+                                  "drscore",
+                                  "hcdscore",
+                                  "dgscore",
+                                  "aaiscore",
+                                  "gdscore",
+                                  "edih",
+                                  "edih_type",
+                                  "author_email")
+
+
+# Reduce the dimensionality by taking only some columns
+edih_assignment <- data.frame(
+  fiscal_code = smes_aggregate_scores$fiscal_code,
+  edih = smes_aggregate_scores$edih,
+  edih_type = smes_aggregate_scores$edih_type
+)
+
+# Merge with averages_treateduntreated_nace to
+# get a dataframe with edihs and all data 
+# including the financials
+averages_treateduntreated_nace_coord <- merge(averages_treateduntreated_nace, edih_assignment, by.x="fiscal_code.x", by.y = "fiscal_code" , all.x=TRUE)
+
+# Now we need to include latitude and longitude of 
+# firm and the corresponding edih, to then compute 
+# the distances for each TREATED firm.
+
+edih_coordinates <- read_excel(paste0(datafolder,"/clean_geocoded_edihs_NOMINATIM.xlsx"))
+
+edih_coordinates <- data.frame(
+  name = edih_coordinates$name,
+  type = edih_coordinates$type,
+  edih_lat = edih_coordinates$latitude,
+  edih_long = edih_coordinates$longitude
+)
+
+# Now, merge edih_coordinates with averages_treatedun...
+# in order to have latitude and longitude of the edih
+# stored alongside its name and type
+
+averages_treateduntreated_nace_coord <- merge(averages_treateduntreated_nace_coord, edih_coordinates, by.x=c("edih", "edih_type"), by.y = c("name", "type") , all.x=TRUE)
+
+
+# Now to get coordinates for each treated firm
+# we load in the file with coordinates and then 
+# merge through fiscal_code with the overall file
+
+dma_coordinates <- read_excel(paste0(datafolder,"/clean_geocoded_dma_NOMINATIM.xlsx"))
+
+dma_coordinates <- data.frame(
+  fiscal_code = dma_coordinates$fiscal_code,
+  firm_lat = dma_coordinates$latitude,
+  firm_long = dma_coordinates$longitude
+)
+
+averages_treateduntreated_nace_coord <- merge(averages_treateduntreated_nace_coord, dma_coordinates, by.x=c("fiscal_code.x"), by.y = c("fiscal_code") , all.x=TRUE)
+
+# Now, we can at least compute distances between 
+# dma firms and their edihs, as a first test
+
+# # Compute Euclidean distance
+# averages_treateduntreated_nace_coord <- averages_treateduntreated_nace_coord %>%
+#   mutate(distance_from_edih = sqrt((edih_lat - firm_lat)^2 + (edih_long - firm_long)^2))
+
+
+
+
+# Compute Haversine distance
+averages_treateduntreated_nace_coord <- averages_treateduntreated_nace_coord %>%
+  mutate(distance_from_edih = distHaversine(matrix(c(firm_long, firm_lat), ncol = 2), 
+                                            matrix(c(edih_long, edih_lat), ncol = 2)))
+
+
+
+
+
+
+
+# Now load the untreated geocoded file with also edihs and merge (we already have distances, neat.)
+
+
+##################################################
+## START OF FIRM DISTANCE and DENSITY CALCULATION
+##################################################
+
+# Activate only if NEW observations are added to DMA survey
+
+
+untreated_coordinates <- read_excel(paste0(datafolder,"/untreated_coordinates_with_edih.xlsx"))
+
+treated_coordinates <- read_excel(paste0(datafolder,"/treated_coordinates_with_edih.xlsx"))
+
+averages_treateduntreated_nace_coord <- merge(averages_treateduntreated_nace_coord, untreated_coordinates, by=c("bvdid"), all.x=TRUE)
+
+
+averages_treateduntreated_nace_coord$nuts0 <- substr(averages_treateduntreated_nace_coord$nuts1, 1,2)
+
+
+averages_treateduntreated_nace_coord <- averages_treateduntreated_nace_coord %>%
+  mutate(edih.x = ifelse(is.na(edih.x), edih.y, edih.x),
+         edih_type.x = ifelse(is.na(edih_type.x), edih_type.y, edih_type.x),
+         firm_lat.x = ifelse(is.na(firm_lat.x), firm_lat.y, firm_lat.x),
+         firm_long.x = ifelse(is.na(firm_long.x), firm_long.y, firm_long.x),
+         distance_from_edih.x = ifelse(is.na(distance_from_edih.x), distance_from_edih.y, distance_from_edih.x), 
+         edih_lat.x = ifelse(is.na(edih_lat.x), edih_lat.y, edih_lat.x), 
+         edih_long.x = ifelse(is.na(edih_long.x), edih_long.y, edih_long.x))
+
+
+
+averages_treateduntreated_nace_coord <- averages_treateduntreated_nace_coord %>%
+  rename(edih = edih.x,
+         edih_type = edih_type.x,
+         firm_lat = firm_lat.x,
+         firm_long = firm_long.x, 
+         distance_from_edih = distance_from_edih.x, 
+         edih_lat = edih_lat.x,
+         edih_long = edih_long.x
+         )
+
+averages_treateduntreated_nace_coord <- averages_treateduntreated_nace_coord %>%
+  mutate(edih.y = NULL,
+         edih_type.y = NULL,
+         firm_lat.y = NULL,
+         firm_long.y = NULL, 
+         distance_from_edih.y = NULL, 
+         edih_lat.y = NULL,
+         edih_long.y = NULL
+         )
+
+averages_treateduntreated_nace_coord <- merge(averages_treateduntreated_nace_coord, treated_coordinates, by.x=c("fiscal_code.x"), by.y = ("bvdid"), all.x=TRUE)
+
+
+
+# Create is_closest_edih variable
+averages_treateduntreated_nace_coord <- averages_treateduntreated_nace_coord %>%
+  mutate(is_closest_edih = case_when(
+    treated == 1 & edih_lat.x == edih_lat.y & edih_long.x == edih_long.y ~ 1,
+    treated == 1 & (edih_lat.x != edih_lat.y | edih_long.x != edih_long.y) ~ 0,
+    treated == 0 ~ NA_real_
+  ))
+
+# # Create is_closest_edih variable based on edih name
+# averages_treateduntreated_nace_coord <- averages_treateduntreated_nace_coord %>%
+#   mutate(is_closest_edih = case_when(
+#     treated == 1 & edih.x == edih.y ~ 1,
+#     treated == 1 & (edih.x != edih.y ) ~ 0,
+#     treated == 0 ~ NA_real_
+#   ))
+
+
+
+# Update the .x columns based on is_closest_edih == 0
+averages_treateduntreated_nace_coord <- averages_treateduntreated_nace_coord %>%
+  mutate(
+    edih.x = if_else(is_closest_edih == 0, edih.y, edih.x),
+    edih_type.x = if_else(is_closest_edih == 0, edih_type.y, edih_type.x),
+    edih_lat.x = if_else(is_closest_edih == 0, edih_lat.y, edih_lat.x),
+    edih_long.x = if_else(is_closest_edih == 0, edih_long.y, edih_long.x)
+  )
+
+
+# RE-Create is_closest_edih variable
+averages_treateduntreated_nace_coord <- averages_treateduntreated_nace_coord %>%
+  mutate(is_closest_edih = case_when(
+    treated == 1 & edih_lat.x == edih_lat.y & edih_long.x == edih_long.y ~ 1,
+    treated == 1 & (edih_lat.x != edih_lat.y | edih_long.x != edih_long.y) ~ 0,
+    treated == 0 ~ NA_real_
+  ))
+
+averages_treateduntreated_nace_coord <- averages_treateduntreated_nace_coord %>%
+  mutate(edih.x = ifelse(is.na(edih.x), edih.y, edih.x),
+         edih_type.x = ifelse(is.na(edih_type.x), edih_type.y, edih_type.x),
+         firm_lat.x = ifelse(is.na(firm_lat.x), firm_lat.y, firm_lat.x),
+         firm_long.x = ifelse(is.na(firm_long.x), firm_long.y, firm_long.x),
+         distance_from_edih.x = ifelse(is.na(distance_from_edih.x), distance_from_edih.y, distance_from_edih.x), 
+         edih_lat.x = ifelse(is.na(edih_lat.x), edih_lat.y, edih_lat.x), 
+         edih_long.x = ifelse(is.na(edih_long.x), edih_long.y, edih_long.x))
+
+
+
+averages_treateduntreated_nace_coord <- averages_treateduntreated_nace_coord %>%
+  rename(edih = edih.x,
+         edih_type = edih_type.x,
+         firm_lat = firm_lat.x,
+         firm_long = firm_long.x, 
+         distance_from_edih = distance_from_edih.x, 
+         edih_lat = edih_lat.x,
+         edih_long = edih_long.x
+         )
+
+averages_treateduntreated_nace_coord <- averages_treateduntreated_nace_coord %>%
+  mutate(edih.y = NULL,
+         edih_type.y = NULL,
+         firm_lat.y = NULL,
+         firm_long.y = NULL, 
+         distance_from_edih.y = NULL, 
+         edih_lat.y = NULL,
+         edih_long.y = NULL
+         )
+
+
+# Filter out all the distances we got that are above 5000km
+# since it is almost impossible in the EU to have that distance
+# so it is probably an error and we substitute it with NA
+
+averages_treateduntreated_nace_coord <- averages_treateduntreated_nace_coord %>%
+  mutate(distance_from_edih = ifelse(distance_from_edih > 2500000, NA, distance_from_edih))
+
+#hist(averages_treateduntreated_nace_coord$is_closest_edih)
+table(averages_treateduntreated_nace_coord$is_closest_edih)
+
+
+
+
+
+
+
+
+
+
+
+# Filter coordinates
+coords <- averages_treateduntreated_nace_coord %>%
+  dplyr::select(firm_long, firm_lat) %>%
+  filter(!is.na(firm_long) & !is.na(firm_lat))
+
+
+# Initialize firm_density column
+averages_treateduntreated_nace_coord$firm_density <- NA
+
+# Add progress bar for the loop
+pb <- progress_bar$new(
+  format = "[:bar] :percent Elapsed: :elapsed ETA: :eta",
+  total = nrow(averages_treateduntreated_nace_coord)
+)
+
+# Calculate firm_density
+for (i in 1:nrow(averages_treateduntreated_nace_coord)) {
+  if (!is.na(averages_treateduntreated_nace_coord$firm_lat[i]) && 
+      !is.na(averages_treateduntreated_nace_coord$firm_long[i])) {
+    current_coords <- c(averages_treateduntreated_nace_coord$firm_long[i], averages_treateduntreated_nace_coord$firm_lat[i])
+    
+    # Compute distances from the current firm to all others
+    distances <- distHaversine(matrix(current_coords, ncol = 2, byrow = TRUE), 
+                               matrix(c(coords$firm_long, coords$firm_lat), ncol = 2))
+    
+    # Count neighbors within 10 km excluding the firm itself
+    firm_density <- sum(distances > 0 & distances < 5000)
+    averages_treateduntreated_nace_coord$firm_density[i] <- firm_density
+  }
+  pb$tick()
+}
+
+# columns_writeout <- averages
+
+# write.xlsx(untreated_coordinates, "untreated_coordinates_with_edih.xlsx")
+
+averages_treateduntreated_nace_coord$distance_from_edih <- averages_treateduntreated_nace_coord$distance_from_edih/1000
+averages_treateduntreated_nace_coord$total_assets <- averages_treateduntreated_nace_coord$total_assets/1000000
+averages_treateduntreated_nace_coord$operating_revenue_turnover <- averages_treateduntreated_nace_coord$operating_revenue_turnover/1000000
+averages_treateduntreated_nace_coord$employees <- averages_treateduntreated_nace_coord$employees/1000
+
+
+
+legacy_averages_treateuntreated_nace_coord <- averages_treateduntreated_nace_coord
+
+# # Define the IQR outlier removal function
+# # Define the function to replace outliers with NA
+# replace_outliers_with_na <- function(data, column) {
+#   Q1 <- quantile(data[[column]], 0.25, na.rm = TRUE)
+#   Q3 <- quantile(data[[column]], 0.75, na.rm = TRUE)
+#   IQR <- Q3 - Q1
+#   lower_bound <- Q1 - 10 * IQR
+#   upper_bound <- Q3 + 10 * IQR
+#   data[[column]][data[[column]] < lower_bound | data[[column]] > upper_bound] <- NA
+#   return(data)
+# }
+
+# # List of variables to apply the IQR method
+# variables_to_winsorize <- c("distance_from_edih", 
+#                             "firm_density", 
+#                             "operating_revenue_turnover", 
+#                             "employees",
+#                             "total_assets",
+#                             "liquidity_ratio",
+#                             "debtoverequity",
+#                             "solvency_ratio_assetbased")
+
+# # Apply the IQR method to each variable
+# for (var in variables_to_winsorize) {
+#   averages_treateduntreated_nace_coord <- replace_outliers_with_na(averages_treateduntreated_nace_coord, var)
+# }
+
+
+
+# Define the array of variable names
+variables_in_model <- c("distance_from_edih", 
+                        "firm_density", 
+                        "macrosector",
+                        "tech_level",
+                        "operating_revenue_turnover", 
+                        "employees",
+                        "total_assets",
+                        "liquidity_ratio",
+                        "debtoverequity",
+                        "solvency_ratio_assetbased") # Add your variable names here
+
+# Filter out observations with NA in any of the specified variables
+averages_treateduntreated_nace_coord <- averages_treateduntreated_nace_coord %>%
+  filter(!if_any(all_of(variables_in_model), is.na))
+
+# Clean the data by keeping only rows where 'treated' is 0 or 1
+averages_treateduntreated_nace_coord <- averages_treateduntreated_nace_coord %>%
+    filter(treated %in% c(0, 1))
+
+# Relevel sector_type so that "Other" is the baseline
+averages_treateduntreated_nace_coord$sector_type <- as.factor(averages_treateduntreated_nace_coord$sector_type)
+averages_treateduntreated_nace_coord$sector_type <- relevel(averages_treateduntreated_nace_coord$sector_type, ref = "Other")
+
+# Relevel tech_level so that "Low" is the baseline
+averages_treateduntreated_nace_coord$tech_level <- as.factor(averages_treateduntreated_nace_coord$tech_level)
+averages_treateduntreated_nace_coord$tech_level <- relevel(averages_treateduntreated_nace_coord$tech_level, ref = "Low")
+
+
+
+
+
+
+
+table(averages_treateduntreated_nace_coord$nuts0)
+
+# Set here number of iterations for glm algorithm
+iterations <- 500
+
+model1 <- glm(treated ~ distance_from_edih + sector_type + operating_revenue_turnover  + employees + total_assets + liquidity_ratio + debtoverequity + solvency_ratio_assetbased, data = averages_treateduntreated_nace_coord, family = binomial(link = "probit"), control = glm.control(maxit = iterations))
+
+mcfadden_r2 <- 1 - (logLik(model1)[1] / logLik(update(model1, . ~ 1))[1])
+
+print(mcfadden_r2)
+
+model2 <- glm(treated ~   sector_type +  operating_revenue_turnover  + employees + total_assets + liquidity_ratio + debtoverequity + solvency_ratio_assetbased, data = averages_treateduntreated_nace_coord, family = binomial(link = "probit"), control = glm.control(maxit = iterations))
+
+mcfadden_r2 <- 1 - (logLik(model2)[1] / logLik(update(model2, . ~ 1))[1])
+
+print(mcfadden_r2)
+
+model4 <- glm(treated ~ distance_from_edih + firm_density  + sector_type  + operating_revenue_turnover + employees + total_assets + liquidity_ratio + debtoverequity + solvency_ratio_assetbased, data = averages_treateduntreated_nace_coord, family = binomial(link = "probit"), control = glm.control(maxit = iterations))
+
+mcfadden_r2 <- 1 - (logLik(model4)[1] / logLik(update(model4, . ~ 1))[1])
+
+print(mcfadden_r2)
+
+model5 <- glm(treated ~ distance_from_edih + firm_density  + sector_type + tech_level + operating_revenue_turnover + employees + total_assets + liquidity_ratio + debtoverequity + solvency_ratio_assetbased, data = averages_treateduntreated_nace_coord, family = binomial(link = "probit"), control = glm.control(maxit = iterations))
+
+mcfadden_r2 <- 1 - (logLik(model5)[1] / logLik(update(model5, . ~ 1))[1])
+
+print(mcfadden_r2)
+
+
+influencePlot(model5)
+# influencePlot(small_model)
+
+cooks_dist <- cooks.distance(model2)
+# Identify influential points
+influential_points <- which(cooks_dist > (4 / nrow(averages_treateduntreated_nace_coord)))
+
+# Identify influential points
+#influential_points <- c(248, 305, 2137, 3231, 4695)
+
+# Remove these points from the dataset
+cleaned_data <- averages_treateduntreated_nace_coord[-influential_points, ]
+
+# Refit the original model without influential points
+model5_cleaned <- glm(treated ~ distance_from_edih + firm_density + sector_type + tech_level + 
+                      operating_revenue_turnover + employees + total_assets + liquidity_ratio + 
+                      debtoverequity + solvency_ratio_assetbased, 
+                      data = cleaned_data, family = binomial(link = "probit"), 
+                      control = glm.control(maxit = 500))
+
+# Check if the model converges
+stargazer(model5,model5_cleaned, type="text")
+
+influencePlot(model5_cleaned)
+
+
+
+small_model <- glm(treated ~ distance_from_edih + 
+                             firm_density + 
+                             distance_from_edih*firm_density  + 
+                             sector_type + tech_level +
+                             employees +
+                             liquidity_ratio +
+                             solvency_ratio_assetbased
+                             , 
+                             data = averages_treateduntreated_nace_coord, 
+                             family = binomial(link = "probit"), 
+                             control = glm.control(maxit = iterations))
+
+stargazer(model2, model1, model4, model5, small_model, type = "latex",  out = paste0(outputfolder, "/",deparse(substitute(model_list)), ".tex"),
+          covariate.labels = c("firm distance", "firm density", "Manufacturing", "Services", "High Tech",
+                               "Medium Tech", "Medium-High Tech", "Medium-Low Tech",
+                               "turnover", "employees", "total assets", "liquidity ratio", "D/E", "solvency ratio",
+                               "firm distance x firm density"))
+
+stargazer(model2, model1, model4, model5, small_model, type = "latex",  out = paste0(outputfolder, "/",deparse(substitute(model_list2)), ".tex"))
+
+stargazer(model2, model1, model4, small_model, type = "latex")
+
+
+margins_model<- margins(small_model)
+
+summary(margins_model)
+
+# Calculate McFadden's R2
+mcfadden_r2 <- 1 - (logLik(small_model)[1] / logLik(update(small_model, . ~ 1))[1])
+
+# Create a stargazer table for the probit model and add McFadden's R2
+stargazer(small_model, type = "latex",  out = paste0(outputfolder, "/",deparse(substitute(small_model)), ".tex"),
+          add.lines = list(
+            c("McFadden's R2", round(mcfadden_r2, 4))
+          ))
+
+vif(small_model, type="predictor")
+
+
+
+
+##########################################
+## VARIOUS ROBUSTNESS CHECKS #############
+##########################################
+
+# Split the data into training and test sets
+set.seed(123)  # For reproducibility
+train_indices <- sample(seq_len(nrow(averages_treateduntreated_nace_coord)), 
+                         size = 0.7 * nrow(averages_treateduntreated_nace_coord))
+train_data <- averages_treateduntreated_nace_coord[train_indices, ]
+test_data <- averages_treateduntreated_nace_coord[-train_indices, ]
+
+# Fit the probit model on training data
+small_model_train <- glm(treated ~ distance_from_edih + firm_density + macrosector + 
+                          size + employees + total_assets + liquidity_ratio + 
+                          debtoverequity + solvency_ratio_assetbased, 
+                          data = train_data, family = binomial(link = "probit"))
+
+# Predict on test data
+test_data$predicted <- predict(small_model_train, newdata = test_data, type = "response")
+
+# Create predicted class based on a threshold
+threshold <- 0.5
+test_data$predicted_class <- ifelse(test_data$predicted > threshold, 1, 0)
+
+# Confusion matrix
+conf_matrix <- table(test_data$treated, test_data$predicted_class)
+print("Confusion Matrix:")
+print(conf_matrix)
+
+# Calculate performance metrics
+accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
+print(paste("Accuracy:", round(accuracy, 4)))
+
+# ROC Curve and AUC
+roc_curve <- roc(test_data$treated, test_data$predicted)
+plot(roc_curve, main = "ROC Curve")
+auc_value <- auc(roc_curve)
+print(paste("AUC:", round(auc_value, 4)))
+
+# Compute VIF for the training model
+vif_values <- vif(small_model_train)
+print("Variance Inflation Factors (VIF):")
+print(vif_values)
+
+# Compute Cook's Distance
+cooks_dist <- cooks.distance(small_model_train)
+# Identify influential points
+influential_points <- which(cooks_dist > (4 / nrow(train_data)))
+print("Influential Points (Cook's Distance):")
+print(influential_points)
+
+# Perform k-fold cross-validation
+# Check for missing values before running cross-validation
+if (any(is.na(averages_treateduntreated_nace_coord))) {
+    print("Data contains missing values. Handle missing values before cross-validation.")
+} else {
+    cv_control <- trainControl(method = "cv", number = 10)
+    cv_model <- train(treated ~ distance_from_edih + firm_density + macrosector + 
+                      size + employees + total_assets + liquidity_ratio + 
+                      debtoverequity + solvency_ratio_assetbased, 
+                      data = averages_treateduntreated_nace_coord, method = "glm",
+                      family = binomial(link = "probit"), trControl = cv_control)
+    # Print cross-validation results
+    print("Cross-Validation Results:")
+    print(cv_model)
+}
+
+
+# Fit model without influential points
+model_without_influential <- update(small_model, subset = -influential_points)
+stargazer(model_without_influential, type="text")
+
+
+
+plot_distributions_nace_coord <- function(variable_name, log_transform = TRUE, display_plots = 1) {
+  # Create an empty list to store plots
+  plot_list <- list()
+  
+  # Loop through each country
+  for (i in seq_along(list_isocodes)) {
+    # Filter data for the current country
+    country_data <- subset(averages_treateduntreated_nace_coord, country_isocode == list_isocodes[i])
+    
+    # Remove rows with NA values in the variable
+    country_data <- country_data[!is.na(country_data[[variable_name]]), ]
+    
+    # Separate treated and untreated data
+    treated_data <- country_data %>% filter(treated == 1)
+    untreated_data <- country_data %>% filter(treated == 0)
+    
+    # Get the number of non-missing observations
+    n_treated <- nrow(treated_data)
+    n_control <- nrow(untreated_data)
+    
+    # Apply log transformation if specified and handle zeros
+    if (log_transform) {
+      treated_data[[variable_name]] <- log1p(treated_data[[variable_name]])
+      untreated_data[[variable_name]] <- log1p(untreated_data[[variable_name]])
+      x_label <- paste("log1p(", variable_name, ")", sep = "")
+    } else {
+      x_label <- variable_name
+    }
+    
+    # Check if there are enough observations for the KS test
+    if (n_treated >= 2 & n_control >= 2) {
+      # Perform Kolmogorov-Smirnov test
+      ks_test <- ks.test(treated_data[[variable_name]], untreated_data[[variable_name]])
+      p_value <- ks_test$p.value
+      
+      subtitle <- paste("KS Test p-value:", format(p_value, digits = 3), 
+                        "\nTreated N:", n_treated, "Control N:", n_control)
+    } else {
+      p_value <- NA
+      subtitle <- paste("Insufficient data for KS Test",
+                        "\nTreated N:", n_treated, "Control N:", n_control)
+    }
+    
+    # Create a density histogram with overlaid density estimates
+    p <- ggplot() +
+      geom_histogram(data = treated_data, aes_string(x = variable_name, y = '..density..', fill = "'Treated'"), 
+                     alpha = 0.5, position = 'identity', bins = 30) +
+      geom_histogram(data = untreated_data, aes_string(x = variable_name, y = '..density..', fill = "'Control'"), 
+                     alpha = 0.5, position = 'identity', bins = 30) +
+      geom_density(data = treated_data, aes_string(x = variable_name, color = "'Treated'"), 
+                   adjust = 1, size = 1) +
+      geom_density(data = untreated_data, aes_string(x = variable_name, color = "'Control'"), 
+                   adjust = 1, size = 1) +
+      labs(title = paste("Distribution of", variable_name, "in", list_isocodes[i]),
+           x = x_label, fill = "Group", color = "Group",
+           subtitle = subtitle) +
+      theme_minimal() +
+      scale_fill_manual(values = c("Treated" = "blue", "Control" = "red")) +
+      scale_color_manual(values = c("Treated" = "blue", "Control" = "red"))
+    
+    # Add the plot to the list
+    plot_list[[i]] <- p
+    
+    # Save each plot individually with the country code in the filename
+    ggsave(filename = paste(outputfolder, "/distrib_compare_", variable_name, "_", list_isocodes[i], ".png", sep = ""),
+           plot = p, dpi = 300, width = 10, height = 6, bg = "white")
+  }
+  
+  # Display the plots in a 2x2 grid layout if display_plots == 1
+  if (display_plots == 1) {
+    num_plots <- length(plot_list)
+    num_pages <- ceiling(num_plots / 4)
+    
+    for (page in seq_len(num_pages)) {
+      start_idx <- (page - 1) * 4 + 1
+      end_idx <- min(page * 4, num_plots)
+      grid_plots <- plot_list[start_idx:end_idx]
+      
+      # Display the current batch of plots in a 2x2 grid
+      grid.arrange(grobs = grid_plots, ncol = 2, nrow = 2)
+    }
+  }
+}
+
+
+
+
+variable_names_frequent <- c("distance_from_edih", "firm_density")
+
+
+for(i in 1:length(variable_names_frequent)){
+  variable_name <- variable_names_frequent[i]
+  plot_distributions_nace_coord(variable_name, display_plots = 0)
+}
+
+
+
+
+plot_distributions_nace_coord_allcountries <- function(variable_name, log_transform = TRUE, display_plots = 1) {
+  # Filter out rows with NA values in the variable
+  data <- averages_treateduntreated_nace_coord[!is.na(averages_treateduntreated_nace_coord[[variable_name]]), ]
+  
+  # Separate treated and untreated data
+  treated_data <- data %>% filter(treated == 1)
+  untreated_data <- data %>% filter(treated == 0)
+  
+  # Get the number of non-missing observations
+  n_treated <- nrow(treated_data)
+  n_control <- nrow(untreated_data)
+  
+  # Apply log transformation if specified and handle zeros
+  if (log_transform) {
+    treated_data[[variable_name]] <- log1p(treated_data[[variable_name]])
+    untreated_data[[variable_name]] <- log1p(untreated_data[[variable_name]])
+    x_label <- paste("log1p(", variable_name, ")", sep = "")
+  } else {
+    x_label <- variable_name
+  }
+  
+  # Check if there are enough observations for the KS test
+  if (n_treated >= 2 & n_control >= 2) {
+    # Perform Kolmogorov-Smirnov test
+    ks_test <- ks.test(treated_data[[variable_name]], untreated_data[[variable_name]])
+    p_value <- ks_test$p.value
+    
+    subtitle <- paste("KS Test p-value:", format(p_value, digits = 3), 
+                      "\nTreated N:", n_treated, "Control N:", n_control)
+  } else {
+    p_value <- NA
+    subtitle <- paste("Insufficient data for KS Test",
+                      "\nTreated N:", n_treated, "Control N:", n_control)
+  }
+  
+  # Create a density histogram with overlaid density estimates
+  p <- ggplot() +
+    geom_histogram(data = treated_data, aes_string(x = variable_name, y = '..density..', fill = "'Treated'"), 
+                   alpha = 0.5, position = 'identity', bins = 30) +
+    geom_histogram(data = untreated_data, aes_string(x = variable_name, y = '..density..', fill = "'Control'"), 
+                   alpha = 0.5, position = 'identity', bins = 30) +
+    geom_density(data = treated_data, aes_string(x = variable_name, color = "'Treated'"), 
+                 adjust = 1, size = 1) +
+    geom_density(data = untreated_data, aes_string(x = variable_name, color = "'Control'"), 
+                 adjust = 1, size = 1) +
+    labs(title = paste("Distribution of", variable_name),
+         x = x_label, fill = "Group", color = "Group",
+         subtitle = subtitle) +
+    theme_minimal() +
+    scale_fill_manual(values = c("Treated" = "blue", "Control" = "red")) +
+    scale_color_manual(values = c("Treated" = "blue", "Control" = "red"))
+  
+  # Save the plot if display_plots = 0
+  if (display_plots == 0) {
+    ggsave(filename = paste(outputfolder, "/distrib_compare_", variable_name, "_allcountries.png", sep = ""),
+           plot = p, dpi = 300, width = 10, height = 6, bg = "white")
+  }
+  
+  # Display the plot if display_plots = 1
+  if (display_plots == 1) {
+    print(p)
+  }
+}
+
+averages_treateduntreated_nace_coord$employees <- averages_treateduntreated_nace_coord$employees*1000
+#averages_treateduntreated_nace_coord$firm_density <- exp(averages_treateduntreated_nace_coord$firm_density)
+
+
+variable_names_frequent <- c("distance_from_edih", 
+                            "firm_density", 
+                            "operating_revenue_turnover", 
+                            "employees",
+                            "total_assets",
+                            "liquidity_ratio",
+                            "debtoverequity",
+                            "solvency_ratio_assetbased")
+
+for(i in seq_along(variable_names_frequent)){
+  variable_name <- variable_names_frequent[i]
+  plot_distributions_nace_coord_allcountries(variable_name, display_plots = 0)
+}
+
+averages_treateduntreated_nace_coord$employees <- averages_treateduntreated_nace_coord$employees/1000
+#averages_treateduntreated_nace_coord$firm_density <- log(averages_treateduntreated_nace_coord$firm_density)
+
+# Calculate the mean for treated and control groups
+mean_treated <- mean(log1p(averages_treateduntreated_nace_coord$distance_from_edih[averages_treateduntreated_nace_coord$treated == 1]), na.rm = TRUE)
+mean_control <- mean(log1p(averages_treateduntreated_nace_coord$distance_from_edih[averages_treateduntreated_nace_coord$treated == 0]), na.rm = TRUE)
+
+# Print the results
+print(paste("Mean of Treated group:", mean_treated))
+print(paste("Mean of Control group:", mean_control))
+
+#averages_treateduntreated_nace_coord <- averages_treateduntreated_nace_coord[averages_treateduntreated_nace_coord$size_numeric!=3,]
+
+excluded_sectors <- c("Activites of extraterritorial organisations and bodies",
+                      "Financial and insurance",
+                      "Households activites etc",
+                      "Public administration and defence, compulsory social sec",
+                      "Water supply, sewerage, waste mgmgt and remediation act",
+                      "Electricity, gas, stean and ac supply")
+
+## find a way to exclude themmmmm
+
+
+
+
+
+
+
+# COMPUTING DISTANCES FROM THE EDIH OFFICES
+
+# Sample dataframe
+df <- data.frame(
+  lat = c(34.0522, 36.7783, 40.7128),
+  lon = c(-118.2437, -119.4179, -74.0060),
+  lat_edih = c(34.0522, 37.7749, 40.7306),
+  lon_edih = c(-118.2437, -122.4194, -73.9352)
+)
+
+# Compute Euclidean distance
+df <- df %>%
+  mutate(distance = sqrt((lat_edih - lat)^2 + (lon_edih - lon)^2))
+
+print(df)
+
+
+
+# Simulate bimodal data
+set.seed(123)
+data <- data.frame(x = c(rnorm(500, mean = -2), rnorm(200, mean = 3)))
+
+# Plot with default bandwidth
+ggplot(data, aes(x = x)) +
+  geom_density() +
+  ggtitle("Default Bandwidth")
+
+# Plot with smaller bandwidth
+ggplot(data, aes(x = x)) +
+  geom_density(adjust = 0.5) +
+  ggtitle("Smaller Bandwidth")
+
+# Plot with larger bandwidth
+ggplot(data, aes(x = x)) +
+  geom_density(adjust = 2) +
+  ggtitle("Larger Bandwidth")
+
+
+
+manufacturing <- averages_treateduntreated_nace_coord[averages_treateduntreated_nace_coord$sector_type=="Manufacturing",]
+
+manufacturing_model <- glm(treated ~ distance_from_edih + firm_density + distance_from_edih*firm_density  + tech_level + operating_revenue_turnover + employees + total_assets + liquidity_ratio + debtoverequity + solvency_ratio_assetbased, data = manufacturing, family = binomial(link = "probit"))
+
+stargazer(manufacturing_model, type = "latex",  out = paste0(outputfolder, "/",deparse(substitute(manufacturing_model)), ".tex"))
+
+services <- averages_treateduntreated_nace_coord[averages_treateduntreated_nace_coord$sector_type=="Services",]
+
+services_model <- glm(treated ~ distance_from_edih + firm_density + distance_from_edih*firm_density  + tech_level + operating_revenue_turnover + employees + total_assets + liquidity_ratio + debtoverequity + solvency_ratio_assetbased, data = services, family = binomial(link = "probit"))
+
+stargazer(services_model, type = "latex",  out = paste0(outputfolder, "/",deparse(substitute(services_model)), ".tex"))
+
+other <- averages_treateduntreated_nace_coord[averages_treateduntreated_nace_coord$sector_type=="Other",]
+
+other_model <- glm(treated ~ distance_from_edih + firm_density + distance_from_edih*firm_density  + tech_level + operating_revenue_turnover + employees + total_assets + liquidity_ratio + debtoverequity + solvency_ratio_assetbased, data = other, family = binomial(link = "probit"))
+
+stargazer(other_model, type = "latex",  out = paste0(outputfolder, "/",deparse(substitute(other_model)), ".tex"))
+
+
+# # Sensitivity analysis for macrosectors
+
+# # Define your model formula
+# model_formula <- treated ~ distance_from_edih + firm_density + sector_type + tech_level + 
+#                   operating_revenue_turnover + employees + total_assets + liquidity_ratio + 
+#                   debtoverequity + solvency_ratio_assetbased
+
+# # List of unique macrosectors
+# unique_macrosectors <- unique(averages_treateduntreated_nace_coord$macrosector)
+
+# # Initialize a list to store the results
+# results <- list()
+
+# # Fit the model excluding each macrosector one by one
+# for (macro in unique_macrosectors) {
+#   # Create a subset of the data excluding the current macrosector
+#   data_subset <- averages_treateduntreated_nace_coord %>%
+#     filter(macrosector != macro)
+  
+#   # Fit the model to the subset
+#   model <- glm(model_formula, data = data_subset, family = binomial(link = "probit"))
+  
+#   # Store the coefficients
+#   results[[macro]] <- coef(model)
+# }
+
+# # Fit the full model
+# full_model <- glm(model_formula, data = averages_treateduntreated_nace_coord, family = binomial(link = "probit"))
+# full_model_coefficients <- coef(full_model)
+
+# # Prepare data for plotting
+# plot_data <- data.frame()
+
+# for (macro in unique_macrosectors) {
+#   model_coeffs <- results[[macro]]
+#   changes <- full_model_coefficients - model_coeffs[match(names(full_model_coefficients), names(model_coeffs))]
+#   plot_data <- rbind(plot_data, data.frame(
+#     Macrosector = macro,
+#     Coefficient = names(changes),
+#     Change = changes
+#   ))
+# }
+
+# # Plot the changes in coefficients
+# ggplot(plot_data, aes(x = Macrosector, y = Change, color = Coefficient, group = Coefficient)) +
+#   geom_line() +
+#   geom_point() +
+#   labs(title = "Change in Coefficients Excluding Each Macrosector",
+#        x = "Macrosector",
+#        y = "Change in Coefficient",
+#        color = "Coefficient") +
+#   theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+# # Prepare data for plotting
+# plot_data <- data.frame()
+
+# for (macro in unique_macrosectors) {
+#   model_coeffs <- results[[macro]]
+#   changes <- full_model_coefficients - model_coeffs[match(names(full_model_coefficients), names(model_coeffs))]
+#   plot_data <- rbind(plot_data, data.frame(
+#     Macrosector = macro,
+#     Coefficient = names(changes),
+#     Change = changes
+#   ))
+# }
+
+# # Plot the changes in coefficients, faceting by Coefficient
+# ggplot(plot_data, aes(x = Macrosector, y = Change)) +
+#   geom_point() +  # Plot points only
+#   facet_wrap(~ Coefficient, scales = "free_y") +
+#   labs(title = "Change in Coefficients Excluding Each Macrosector",
+#        x = "Macrosector",
+#        y = "Change in Coefficient") +
+#   theme(axis.text.x = element_text(angle = 90, hjust = 1),
+#         strip.text = element_text(size = 10))
+
+
+### ANOTHER WAY, WITH INCLUDED STD ERRORS AND A ZERO LINE
+
+# Define your model formula
+model_formula <- treated ~ distance_from_edih + firm_density + sector_type + tech_level + 
+                  operating_revenue_turnover + employees + total_assets + liquidity_ratio + 
+                  debtoverequity + solvency_ratio_assetbased
+
+# Function to get coefficients and standard errors
+get_coefficients_se <- function(model) {
+  coefs <- summary(model)$coefficients
+  data.frame(Coefficient = rownames(coefs), 
+             Value = coefs[, "Estimate"], 
+             SE = coefs[, "Std. Error"])
+}
+
+# List of unique macrosectors
+unique_macrosectors <- unique(averages_treateduntreated_nace_coord$macrosector)
+
+# Initialize lists to store results
+results <- list()
+se_results <- list()
+
+# Fit the model excluding each macrosector one by one
+for (macro in unique_macrosectors) {
+  # Create a subset of the data excluding the current macrosector
+  data_subset <- averages_treateduntreated_nace_coord %>%
+    filter(macrosector != macro)
+  
+  # Fit the model to the subset
+  model <- glm(model_formula, data = data_subset, family = binomial(link = "probit"))
+  
+  # Store the coefficients and standard errors
+  coefs_se <- get_coefficients_se(model)
+  results[[macro]] <- coefs_se
+}
+
+# Fit the full model
+full_model <- glm(model_formula, data = averages_treateduntreated_nace_coord, family = binomial(link = "probit"))
+full_model_coefs_se <- get_coefficients_se(full_model)
+
+# Prepare data for plotting
+plot_data <- data.frame()
+
+for (macro in unique_macrosectors) {
+  model_coefs_se <- results[[macro]]
+  changes <- full_model_coefs_se %>%
+    left_join(model_coefs_se, by = "Coefficient", suffix = c(".full", ".removed")) %>%
+    mutate(Change = Value.full - Value.removed,
+           SE = SE.removed) %>%
+    dplyr::select(Coefficient, Change, SE) %>%
+    mutate(Macrosector = macro)
+  
+  plot_data <- rbind(plot_data, changes)
+}
+
+# Check the structure of plot_data
+str(plot_data)
+
+
+
+# Plot the changes in coefficients, faceting by Coefficient
+p <- ggplot(plot_data, aes(x = Macrosector, y = Change)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = Change - SE, ymax = Change + SE), width = 0.2) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  facet_wrap(~ Coefficient, scales = "free_y") +
+  labs(title = "Change in Coefficients Excluding Each Macrosector",
+       x = "Macrosector",
+       y = "Change in Coefficient") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        strip.text = element_text(size = 10))
+
+plot(p)
+
+
+ggsave(paste0(outputfolder, "/changes-in-coeff.pdf"), plot=p, dpi = 300, width = 10, height = 5.6)
+
+country_groups <- c("country_groupbalkans",
+                    "country_groupbaltics",
+                    "country_groupbenelux",
+                    "country_groupeastern",
+                    "country_groupsouth",
+                    "country_groupwestern",
+                    "country_groupcentral"
+                    )
+
+# Filter out the rows where Coefficient is from "country_group"
+filtered_plot_data <- plot_data %>% 
+  filter(!Coefficient %in% country_groups)
+
+# Plot the changes in coefficients, faceting by Coefficient
+p <- ggplot(filtered_plot_data, aes(x = Country, y = Change)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = Change - SE, ymax = Change + SE), width = 0.2) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  facet_wrap(~ Coefficient, scales = "free_y") +
+  labs(title = "Change in Coefficients Excluding Each Country",
+       x = "",
+       y = "Change in Coefficient") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        strip.text = element_text(size = 10))
+
+# Display the plot
+plot(p)
+
+# Save the plot as a PDF file
+ggsave(paste0(outputfolder, "/changes-in-coeff-nocountryeffects.pdf"), plot = p, dpi = 300, width = 10, height = 5.6)
+
+
+
+
+
+######### COUNTRY BY COUNTRY AND SHOULD WORK EVEN
+### IF UGLY NAMING OF VARIABLES
+
+
+# Define your model formula
+model_formula <- treated ~ distance_from_edih + firm_density + sector_type + tech_level + 
+                  operating_revenue_turnover + employees + total_assets + liquidity_ratio + 
+                  debtoverequity + solvency_ratio_assetbased
+
+# Function to get coefficients and standard errors
+get_coefficients_se <- function(model) {
+  coefs <- summary(model)$coefficients
+  data.frame(Coefficient = rownames(coefs), 
+             Value = coefs[, "Estimate"], 
+             SE = coefs[, "Std. Error"])
+}
+
+# List of unique macrosectors
+#unique_macrosectors <- unique(averages_treateduntreated_nace_coord$country_code)
+
+
+# List of unique country codes with both treated and controls
+unique_macrosectors <- averages_treateduntreated_nace_coord %>%
+  group_by(nuts0) %>%
+  filter(n() >= 20) %>%
+  summarize(treated_present = sum(treated == 1) > 0, 
+            control_present = sum(treated == 0) > 0) %>%
+  filter(treated_present & control_present) %>%
+  pull(nuts0) %>%
+  unique()
+
+
+
+
+# Initialize lists to store results
+results <- list()
+se_results <- list()
+
+# Fit the model excluding each macrosector one by one
+for (macro in unique_macrosectors) {
+  # Create a subset of the data excluding the current macrosector
+  data_subset <- averages_treateduntreated_nace_coord %>%
+    filter(nuts0 != macro)
+  
+  # Fit the model to the subset
+  model <- glm(model_formula, data = data_subset, family = binomial(link = "probit"))
+  
+  # Store the coefficients and standard errors
+  coefs_se <- get_coefficients_se(model)
+  results[[macro]] <- coefs_se
+}
+
+# Fit the full model
+full_model <- glm(model_formula, data = averages_treateduntreated_nace_coord, family = binomial(link = "probit"))
+full_model_coefs_se <- get_coefficients_se(full_model)
+
+# Prepare data for plotting
+plot_data <- data.frame()
+
+for (macro in unique_macrosectors) {
+  model_coefs_se <- results[[macro]]
+  changes <- full_model_coefs_se %>%
+    left_join(model_coefs_se, by = "Coefficient", suffix = c(".full", ".removed")) %>%
+    mutate(Change = Value.full - Value.removed,
+           SE = SE.removed) %>%
+    dplyr::select(Coefficient, Change, SE) %>%
+    mutate(Macrosector = macro)
+  
+  plot_data <- rbind(plot_data, changes)
+}
+
+# Check the structure of plot_data
+str(plot_data)
+
+
+
+# Plot the changes in coefficients, faceting by Coefficient
+ggplot(plot_data, aes(x = Macrosector, y = Change)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = Change - SE, ymax = Change + SE), width = 0.2) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  facet_wrap(~ Coefficient, scales = "free_y") +
+  labs(title = "Change in Coefficients Excluding Each Country",
+       x = "Macrosector",
+       y = "Change in Coefficient") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        strip.text = element_text(size = 10))
+
+
+# Define groups of countries
+
+baltics <- c("LT", "LV", "EE", "FI")
+
+eastern <- c("BG", "CZ")
+
+central <- c("DE", "DK", "AT")
+
+south <- c("IT", "GR", "ES")
+
+# ireland <- c("IE")
+
+balkans <- c("HR", "SI")
+
+western <- c("IE", "FR")
+
+# france <- c("FR")
+
+# Ensure the country_code column is character type and remove any leading/trailing spaces
+averages_treateduntreated_nace_coord <- averages_treateduntreated_nace_coord %>%
+  mutate(country_code = trimws(as.character(country_code)))
+
+# Define country groups
+baltics <- c("LT", "LV", "EE", "FI")
+eastern <- c("BG", "CZ")
+central <- c("DE", "DK", "AT")
+south <- c("IT", "GR", "ES")
+benelux <- c("BE", "NL")
+# ireland <- c("IE")
+balkans <- c("HR", "SI")
+# france <- c("FR")
+western <- c("IE", "FR")
+
+# Assign country groups
+averages_treateduntreated_nace_coord <- averages_treateduntreated_nace_coord %>%
+  mutate(country_group = case_when(
+    country_isocode %in% baltics ~ "baltics",
+    country_isocode %in% eastern ~ "eastern",
+    country_isocode %in% benelux ~ "benelux",
+    country_isocode %in% central ~ "central",
+    country_isocode %in% south ~ "south",
+    # country_isocode %in% ireland ~ "ireland",
+    country_isocode %in% balkans ~ "balkans",
+    country_isocode %in% western ~ "western",
+    TRUE ~ "other"  # Assign NA for any unmatched value
+  ))
+
+# Check the result
+table(averages_treateduntreated_nace_coord$country_group)
+
+table(averages_treateduntreated_nace_coord$country_isocode)
+
+
+# Define your model formula
+model_formula1 <- treated ~ distance_from_edih + firm_density + sector_type + tech_level + 
+                  operating_revenue_turnover + employees + total_assets + liquidity_ratio + 
+                  solvency_ratio_assetbased
+
+# Define your model formula
+model_formula2 <- treated ~ distance_from_edih + firm_density + sector_type + tech_level + 
+                  operating_revenue_turnover + employees + total_assets + liquidity_ratio + 
+                  debtoverequity
+
+full_model <- glm(model_formula1, data = averages_treateduntreated_nace_coord, family = binomial(link = "probit"))
+
+print("Without d/e")
+stargazer(full_model, type = "latex",  out = paste0(outputfolder, "/",deparse(substitute(full_model)), ".tex"))
+
+full_model <- glm(model_formula2, data = averages_treateduntreated_nace_coord, family = binomial(link = "probit"))
+
+print("without solvency ratio")
+stargazer(full_model, type="text")
+
+
+# Take out debtoverequity for good since it is not significant while the solvency ratio is
+
+# Define your model formula
+model_formula3 <- treated ~ distance_from_edih + firm_density + sector_type + tech_level + 
+                  operating_revenue_turnover + employees + liquidity_ratio + 
+                  solvency_ratio_assetbased
+
+full_model <- glm(model_formula3, data = averages_treateduntreated_nace_coord, family = binomial(link = "probit"))
+
+print("Without total assets")
+stargazer(full_model, type = "latex",  out = paste0(outputfolder, "/",deparse(substitute(full_model)), ".tex"))
+
+# Define your model formula
+model_formula4 <- treated ~ distance_from_edih + firm_density + sector_type + tech_level + 
+                  operating_revenue_turnover + total_assets + liquidity_ratio + 
+                  solvency_ratio_assetbased
+
+full_model <- glm(model_formula4, data = averages_treateduntreated_nace_coord, family = binomial(link = "probit"))
+
+print("Without employees but with total assets")
+stargazer(full_model, type = "latex",  out = paste0(outputfolder, "/",deparse(substitute(full_model)), ".tex"))
+
+
+# Define your model formula
+model_formula5 <- treated ~ distance_from_edih + firm_density + sector_type + tech_level + 
+                  operating_revenue_turnover + liquidity_ratio + 
+                  solvency_ratio_assetbased
+
+full_model <- glm(model_formula5, data = averages_treateduntreated_nace_coord, family = binomial(link = "probit"))
+
+print("Without employees and total assets")
+stargazer(full_model, type = "latex",  out = paste0(outputfolder, "/",deparse(substitute(full_model)), ".tex"))
+
+# Define your model formula
+model_formula6 <- treated ~  firm_density + sector_type + tech_level + 
+                  operating_revenue_turnover + employees + liquidity_ratio + 
+                  solvency_ratio_assetbased
+
+full_model <- glm(model_formula6, data = averages_treateduntreated_nace_coord, family = binomial(link = "probit"))
+
+print("Without distance")
+stargazer(full_model, type = "latex",  out = paste0(outputfolder, "/",deparse(substitute(full_model)), ".tex"))
+
+
+
+
+
+
+# Ensure country_group is a factor and set the desired baseline (e.g., 'central')
+averages_treateduntreated_nace_coord <- averages_treateduntreated_nace_coord %>%
+  mutate(country_group = factor(country_group, levels = c("central", "baltics", "eastern", 
+                                                          "south", "western", "balkans", 
+                                                          "benelux")))
+
+# Define your model formula
+model_formula7 <- treated ~ distance_from_edih + firm_density + sector_type + tech_level + 
+                  operating_revenue_turnover + employees + liquidity_ratio + 
+                  solvency_ratio_assetbased + country_group
+
+full_model <- glm(model_formula7, data = averages_treateduntreated_nace_coord, family = binomial(link = "probit"))
+
+print("With distance and country groups")
+stargazer(full_model, type = "latex",  out = paste0(outputfolder, "/",deparse(substitute(full_model)), ".tex"))
+
+margins_model<- margins(full_model)
+
+summary(margins_model)
+
+
+
+
+
+#######################
+### REDO THE PLOT OF CHANGING COEFFICIENTS BUT WITH NEW SPECIFICATIONS
+
+######### COUNTRY BY COUNTRY AND SHOULD WORK EVEN
+### IF UGLY NAMING OF VARIABLES
+
+
+# Define your model formula
+model_formula <- treated ~ distance_from_edih + firm_density + sector_type + tech_level + 
+                  operating_revenue_turnover + employees  + liquidity_ratio + 
+                  solvency_ratio_assetbased + country_group
+
+# Function to get coefficients and standard errors
+get_coefficients_se <- function(model) {
+  coefs <- summary(model)$coefficients
+  data.frame(Coefficient = rownames(coefs), 
+             Value = coefs[, "Estimate"], 
+             SE = coefs[, "Std. Error"])
+}
+
+# List of unique macrosectors
+#unique_macrosectors <- unique(averages_treateduntreated_nace_coord$country_code)
+
+
+# List of unique country codes with both treated and controls
+unique_macrosectors <- averages_treateduntreated_nace_coord %>%
+  group_by(nuts0) %>%
+  filter(n() >= 20) %>%
+  summarize(treated_present = sum(treated == 1) > 0, 
+            control_present = sum(treated == 0) > 0) %>%
+  filter(treated_present & control_present) %>%
+  pull(nuts0) %>%
+  unique()
+
+
+
+
+# Initialize lists to store results
+results <- list()
+se_results <- list()
+
+# Fit the model excluding each macrosector one by one
+for (macro in unique_macrosectors) {
+  # Create a subset of the data excluding the current macrosector
+  data_subset <- averages_treateduntreated_nace_coord %>%
+    filter(nuts0 != macro)
+  
+  # Fit the model to the subset
+  model <- glm(model_formula, data = data_subset, family = binomial(link = "probit"))
+  
+  # Store the coefficients and standard errors
+  coefs_se <- get_coefficients_se(model)
+  results[[macro]] <- coefs_se
+}
+
+# Fit the full model
+full_model <- glm(model_formula, data = averages_treateduntreated_nace_coord, family = binomial(link = "probit"))
+full_model_coefs_se <- get_coefficients_se(full_model)
+
+# Prepare data for plotting
+plot_data <- data.frame()
+
+for (macro in unique_macrosectors) {
+  model_coefs_se <- results[[macro]]
+  changes <- full_model_coefs_se %>%
+    left_join(model_coefs_se, by = "Coefficient", suffix = c(".full", ".removed")) %>%
+    mutate(Change = Value.full - Value.removed,
+           SE = SE.removed) %>%
+    dplyr::select(Coefficient, Change, SE) %>%
+    mutate(Macrosector = macro)
+  
+  plot_data <- rbind(plot_data, changes)
+}
+
+# Check the structure of plot_data
+str(plot_data)
+
+
+
+# Plot the changes in coefficients, faceting by Coefficient
+ggplot(plot_data, aes(x = Macrosector, y = Change)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = Change - SE, ymax = Change + SE), width = 0.2) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  facet_wrap(~ Coefficient, scales = "free_y") +
+  labs(title = "Change in Coefficients Excluding Each Country",
+       x = "Macrosector",
+       y = "Change in Coefficient") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),
+        strip.text = element_text(size = 10))
+
+
+
+### Take out all necessary dataframes to store them and 
+### do the anlysis files separately, without need to rerun this code
+### which will eventually become just a management / cleaning script
+
+write.xlsx(averages_treateduntreated_nace_coord, paste0(outputfolder,"/treateduntreated_CLEAN_for_analysis.xlsx"))
+
+data <- read.xlsx(paste0(outputfolder, "/treateduntreated_CLEAN_for_analysis.xlsx"))
+
+# Compute summary statistics
+# Compute summary statistics
+summary_stats <- data %>%
+  group_by(treated) %>%
+  summarise(
+    N = n(),
+    Mean_Employees = mean(employees, na.rm = TRUE),
+    SD_Employees = sd(employees, na.rm = TRUE),
+    Mean_TotalAssets = mean(total_assets, na.rm = TRUE),
+    SD_TotalAssets = sd(total_assets, na.rm = TRUE)
+  )
+
+# Pivot data to have means and standard deviations as rows
+summary_stats_long <- summary_stats %>%
+  pivot_longer(cols = -treated, names_to = "Statistic", values_to = "Value") %>%
+  pivot_wider(names_from = treated, values_from = Value, names_prefix = "Treated_")
+
+# Create LaTeX table
+latex_table <- xtable(summary_stats_long, caption = "Comparison between Treated and Control Firms")
+
+# Write LaTeX code to file
+tex_file <- paste0(outputfolder, "/comparison_treated_control.tex")
+writeLines(print(latex_table, type = "latex", include.rownames = FALSE), tex_file)
+
+# Print message
+cat("LaTeX file created at:", tex_file)
+
+# Compute summary statistics and p-values
+summary_stats <- data %>%
+  group_by(treated) %>%
+  summarise(
+    N = n(),
+    Mean_Employees = mean(employees, na.rm = TRUE),
+    SD_Employees = sd(employees, na.rm = TRUE),
+    Mean_TotalAssets = mean(total_assets, na.rm = TRUE),
+    SD_TotalAssets = sd(total_assets, na.rm = TRUE),
+    Mean_LiquidityRatio = mean(liquidity_ratio, na.rm = TRUE),
+    SD_LiquidityRatio = sd(liquidity_ratio, na.rm = TRUE),
+    Mean_Solvency = mean(solvency_ratio_assetbased, na.rm = TRUE),
+    SD_Solvency = sd(solvency_ratio_assetbased, na.rm = TRUE),
+    Mean_turnover = mean(operating_revenue_turnover, na.rm = TRUE),
+    SD_turnover = sd(operating_revenue_turnover, na.rm = TRUE)
+  ) %>%
+  pivot_longer(cols = -treated, names_to = "Statistic", values_to = "Value") %>%
+  pivot_wider(names_from = treated, values_from = Value, names_prefix = "Treated_")
+
+# Compute p-values for the t-tests
+p_values <- data.frame(
+  Statistic = c("Mean_Employees", "Mean_TotalAssets", "Mean_LiquidityRatio", "Mean_Solvency", "Mean_turnover"),
+  p_value = c(
+    t.test(employees ~ treated, data = data)$p.value,
+    t.test(total_assets ~ treated, data = data)$p.value,
+    t.test(liquidity_ratio ~ treated, data = data)$p.value,
+    t.test(solvency_ratio_assetbased ~ treated, data = data)$p.value,
+    t.test(operating_revenue_turnover ~ treated, data = data)$p.value
+  )
+)
+
+# Merge summary statistics with p-values
+summary_stats <- summary_stats %>%
+  left_join(p_values, by = "Statistic")
+
+# Create LaTeX table
+latex_table <- xtable(summary_stats, caption = "Comparison between Control Firms (Treated = 0) and Treated ones (Treated = 1), with p-values for the t-test of equal means")
+
+# Write LaTeX code to file
+tex_file <- paste0(outputfolder, "/comparison_treated_control_with_test.tex")
+writeLines(print(latex_table, type = "latex", include.rownames = FALSE), tex_file)
+
+# Print message
+cat("LaTeX file created at:", tex_file)
+
+
+formula <- treated ~ distance_from_edih + firm_density + tech_level + operating_revenue_turnover + employees + liquidity_ratio + solvency_ratio_assetbased + country_group
+
+manufacturing <- averages_treateduntreated_nace_coord[averages_treateduntreated_nace_coord$sector_type=="Manufacturing",]
+
+manufacturing_model <- glm(formula, data = manufacturing, family = binomial(link = "probit"))
+
+stargazer(manufacturing_model, type = "latex",  out = paste0(outputfolder, "/",deparse(substitute(manufacturing_model)), ".tex"))
+
+services <- averages_treateduntreated_nace_coord[averages_treateduntreated_nace_coord$sector_type=="Services",]
+
+services_model <- glm(formula, data = services, family = binomial(link = "probit"))
+
+stargazer(services_model, type = "latex",  out = paste0(outputfolder, "/",deparse(substitute(services_model)), ".tex"))
+
+other <- averages_treateduntreated_nace_coord[averages_treateduntreated_nace_coord$sector_type=="Other",]
+
+other_model <- glm(formula, data = other, family = binomial(link = "probit"))
+
+stargazer(other_model, type = "latex",  out = paste0(outputfolder, "/",deparse(substitute(other_model)), ".tex"))
+
+
+stargazer(manufacturing_model, services_model, other_model, type = "latex",  out = paste0(outputfolder, "/",deparse(substitute(singlesectors_model_list)), ".tex"), omit = "country_group", model.numbers = FALSE, column.labels = c("Manufacturing", "Services", "Other"))
+
+
+full_formula <- treated ~ distance_from_edih + firm_density + sector_type + tech_level + operating_revenue_turnover + employees + liquidity_ratio + solvency_ratio_assetbased + country_group
+
+
+full_model <- glm(full_formula, data = averages_treateduntreated_nace_coord, family = binomial(link = "probit"))
+
+formula_without_distdens <- treated ~ sector_type + tech_level + operating_revenue_turnover + employees + liquidity_ratio + solvency_ratio_assetbased + country_group
+
+model_withoutdistdens <- glm(formula_without_distdens, data = averages_treateduntreated_nace_coord, family = binomial(link = "probit"))
+
+formula_withoutdens <- treated ~ distance_from_edih + sector_type + tech_level + operating_revenue_turnover + employees + liquidity_ratio + solvency_ratio_assetbased + country_group
+
+model_withoutdens <- glm(formula_withoutdens, data = averages_treateduntreated_nace_coord, family = binomial(link = "probit"))
+
+stargazer(model_withoutdistdens, model_withoutdens, full_model, type = "latex",  out = paste0(outputfolder, "/",deparse(substitute(ultimate_model_list)), ".tex"), dep.var.caption = "", omit.stat = c("ll"), omit = c("country_group", "Constant"), model.numbers = FALSE, column.labels = c("w/o Dist", "w/ Dist", "w/ Dist and Dens"))
+
+# Calculate marginal effects for the full model
+marginal_effects_full_model <- margins(full_model)
+
+a <- summary(marginal_effects_full_model)
+
+
+# Output the table of marginal effects to a LaTeX file
+stargazer(a,
+          type = "latex",
+          summary = FALSE,  # Do not display summary statistics
+          title = "Average Marginal Effects for Full Model",
+          out = paste0(outputfolder, "/marginal_effects_full_model.tex"),
+          column.labels = colnames(marginal_effects_full_model),
+          digits = 3)
+
+```
+
+
+```{r lastinput}
+
+dma_model_formula <- dmascore ~ distance_from_edih + firm_density + sector_type + tech_level + operating_revenue_turnover + employees + liquidity_ratio + solvency_ratio_assetbased + country_group
+
+dma_model <- lm(dma_model_formula, data = averages_treateduntreated_nace_coord)
+
+print("DMA MODEL REGRESSION")
+stargazer(dma_model, type = "latex",  out = paste0(outputfolder, "/",deparse(substitute(dma_model)), ".tex"), 
+          dep.var.caption = "", omit.stat = c("ll"), omit = c("country_group", "Constant", "sector_type"))
+
+
+
+```

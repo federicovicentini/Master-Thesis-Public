@@ -1,0 +1,64 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.3 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{cms/global//global/global/global}
+    \entry{oecdclassification}{article}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=93118fd54da14b37cf3649f7e8d0dd24}{%
+           family={Galindo-Rueda},
+           familyi={G\bibinithyphendelim R\bibinitperiod},
+           given={Fernando},
+           giveni={F\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=3a030da0cd31cf28f43d0289c61e4b21}{%
+           family={Verger},
+           familyi={V\bibinitperiod},
+           given={Fabrice},
+           giveni={F\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{location}{1}{%
+        {Paris}%
+      }
+      \list{publisher}{1}{%
+        {OECD Publishing}%
+      }
+      \strng{namehash}{3f40db65b33c34787ef0dd911253c7ee}
+      \strng{fullhash}{3f40db65b33c34787ef0dd911253c7ee}
+      \strng{fullhashraw}{3f40db65b33c34787ef0dd911253c7ee}
+      \strng{bibnamehash}{3f40db65b33c34787ef0dd911253c7ee}
+      \strng{authorbibnamehash}{3f40db65b33c34787ef0dd911253c7ee}
+      \strng{authornamehash}{3f40db65b33c34787ef0dd911253c7ee}
+      \strng{authorfullhash}{3f40db65b33c34787ef0dd911253c7ee}
+      \strng{authorfullhashraw}{3f40db65b33c34787ef0dd911253c7ee}
+      \field{sortinit}{G}
+      \field{sortinithash}{32d67eca0634bf53703493fb1090a2e8}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{author}
+      \field{journaltitle}{OECD Science, Technology and Industry Working Papers}
+      \field{title}{OECD Taxonomy of Economic Activities Based on R\&D Intensity}
+      \field{year}{2016}
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+

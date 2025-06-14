@@ -1,0 +1,4164 @@
+---
+title: "DigINNOVA - DMA Analysis"
+author: "Federico Vicentini"
+date: "05/10/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+
+# LINE ADDED TO USE R 4.0 INSTEAD OF 4.3
+# Specify the path to the desired version of R
+# Sys.setenv(PATH = paste0("C:/Program Files/R/R-4.0.5/bin;", Sys.getenv("PATH")))
+
+
+knitr::opts_chunk$set(echo = TRUE)
+
+# Clear the variables
+rm(list = ls())
+
+
+# Set the working directory to source file location with
+# setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+
+# Install packages
+packages <- c("ggplot2", "moments", "corrplot", "polycor", "eurostat")
+new.packages <- packages[!(packages %in% installed.packages()[, "Package"])]
+if (length(new.packages)) install.packages(new.packages)
+invisible(lapply(packages, library, character.only = TRUE))
+```
+
+```{r p1, include=TRUE, echo=FALSE, dev='svg'}
+
+workdir <- dirname(getwd())
+
+datafolder <- paste0(workdir, "/Data")
+
+outputfolder <- paste0(workdir, "/Output")
+
+
+# Define the function(s?) that we will use to compute the total value of the scores
+
+dmascorecompute = function(data){
+  data$dmascore = 0
+  data$dbsscore = dbscompute(data)
+  data$drscore = drcompute(data)
+  data$hcdscore = hcdcompute(data)
+  data$dmscore = dmcompute(data)
+  data$aaiscore = aaicompute(data)
+  data$gdscore = gdcompute(data)
+  data$dmascore = round((data$dbsscore +
+                           data$drscore +
+                           data$hcdscore +
+                           data$dmscore +
+                           data$aaiscore +
+                           data$gdscore)/6)
+  data$q1score = quest1compute(data)
+  data$q2score = quest2compute(data)
+  data$q3score = quest3compute(data)
+  data$q4score = quest4compute(data)
+  data$q5score = quest5compute(data)
+  data$q6score = quest6compute(data)
+  data$q7score = quest7compute(data)
+  data$q8score = quest8compute(data)
+  data$q9score = quest9compute(data)
+  data$q10score = quest10compute(data)
+  data$q11score = quest11compute(data)
+  return(data)
+  
+}
+
+dbscompute = function(data){
+  data$dbsscore = 0
+  start = which(names(data)=="q11ai")
+  finish = which(names(data)=="q110pi")
+  for(i in seq(from=start, to=finish)){
+    data$dbsscore = data$dbsscore + data[,i]*3.33
+  }
+  start = which(names(data)=="q21")
+  finish = which(names(data)=="q210")
+  for(i in seq(from=start, to=finish)){
+    data$dbsscore = data$dbsscore + data[,i]*3.33
+  }
+  return(round(data$dbsscore))
+}
+
+quest1compute = function(data){
+  data$q1score = 0
+  start = which(names(data)=="q11ai")
+  finish = which(names(data)=="q110pi")
+  for(i in seq(from=start, to=finish)){
+    data$q1score = data$q1score + data[,i]*3.33
+  }
+  return(round(data$q1score))
+}
+
+quest2compute = function(data){
+  data$q2score = 0
+  start = which(names(data)=="q21")
+  finish = which(names(data)=="q210")
+  for(i in seq(from=start, to=finish)){
+    data$q2score = data$q2score + data[,i]*3.33
+  }
+  return(round(data$q2score))
+}
+
+
+drcompute = function(data){
+  data$drscore = 0
+  start = which(names(data)=="q31")
+  finish = which(names(data)=="q310")
+  for(i in seq(from=start, to=finish)){
+    data$drscore = data$drscore + (data[,i]*5)
+  }
+  data$drscoreadd = 0
+  start = which(names(data)=="q41")
+  finish = which(names(data)=="q47")
+  for(i in seq(from=start, to=finish)){
+    data$drscoreadd = data$drscoreadd + (data[,i]*5*(10/7))
+  }
+  data$drscore = round(data$drscore + data$drscoreadd)
+  return(round(data$drscore))
+}
+
+quest3compute = function(data){
+  data$q3score = 0
+  start = which(names(data)=="q31")
+  finish = which(names(data)=="q310")
+  for(i in seq(from=start, to=finish)){
+    data$q3score = data$q3score + (data[,i]*5)
+  }
+  return(round(data$q3score))
+}
+
+
+quest4compute = function(data){
+  data$q4score = 0
+  start = which(names(data)=="q41")
+  finish = which(names(data)=="q47")
+  for(i in seq(from=start, to=finish)){
+    data$q4score = data$q4score + (data[,i]*5*(10/7))
+  }
+  return(round(data$q4score))
+}
+
+
+hcdcompute = function(data){
+  data$hcdscore = 0
+  start = which(names(data)=="q51")
+  finish = which(names(data)=="q57")
+  for(i in seq(from=start, to=finish)){
+    data$hcdscore = data$hcdscore + (data[,i]*5*(10/7))
+  }
+  data$hcdscoreadd = 0 
+  start = which(names(data)=="q61")
+  finish = which(names(data)=="q68")
+  for(i in seq(from=start, to=finish)){
+    data$hcdscoreadd = data$hcdscoreadd + (data[,i]*5*(10/8))
+  }
+  data$hcdscore = data$hcdscore + data$hcdscoreadd
+  return(round(data$hcdscore))
+}
+
+quest5compute = function(data){
+  data$q5score = 0
+  start = which(names(data)=="q51")
+  finish = which(names(data)=="q57")
+  for(i in seq(from=start, to=finish)){
+    data$q5score = data$q5score + (data[,i]*5*(10/7))
+  }
+  return(round(data$q5score))
+}
+
+quest6compute = function(data){
+  data$q6score = 0
+  start = which(names(data)=="q61")
+  finish = which(names(data)=="q68")
+  for(i in seq(from=start, to=finish)){
+    data$q6score = data$q6score + (data[,i]*5*(10/8))
+  }
+  return(round(data$q6score))
+}
+
+dmcompute = function(data){
+  data$dmscore = 0
+  start = which(names(data)=="q71")
+  finish = which(names(data)=="q71")
+  for(i in seq(from=start, to=finish)){
+    data$dmscore = data$dmscore + (data[,i]*5*(10/7))
+  }
+  start = which(names(data)=="q72")
+  finish = which(names(data)=="q72")
+  for(i in seq(from=start, to=finish)){
+    data$dmscore = data$dmscore + 0
+  }
+  start = which(names(data)=="q73")
+  finish = which(names(data)=="q78")
+  for(i in seq(from=start, to=finish)){
+    data$dmscore = data$dmscore + (data[,i]*5*(10/7))
+  }
+  data$dmscoreadd = 0
+  start = which(names(data)=="q81")
+  finish = which(names(data)=="q86")
+  for(i in seq(from=start, to=finish)){
+    data$dmscoreadd = data$dmscoreadd + (data[,i]*5*(10/6))
+  }
+  data$dmscore = data$dmscore + data$dmscoreadd
+  return(round(data$dmscore))
+}
+
+
+quest7compute = function(data){
+  data$q7score = 0
+  start = which(names(data)=="q71")
+  finish = which(names(data)=="q71")
+  for(i in seq(from=start, to=finish)){
+    data$q7score = data$q7score + (data[,i]*5*(10/7))
+  }
+  start = which(names(data)=="q72")
+  finish = which(names(data)=="q72")
+  for(i in seq(from=start, to=finish)){
+    data$q7score = data$q7score + 0
+  }
+  start = which(names(data)=="q73")
+  finish = which(names(data)=="q78")
+  for(i in seq(from=start, to=finish)){
+    data$q7score = data$q7score + (data[,i]*5*(10/7))
+  }
+  return(round(data$q7score))
+}
+
+
+quest8compute = function(data){
+  data$q8score = 0
+  start = which(names(data)=="q81")
+  finish = which(names(data)=="q86")
+  for(i in seq(from=start, to=finish)){
+    data$q8score = data$q8score + (data[,i]*5*(10/6))
+  }
+  return(round(data$q8score))
+}
+
+
+
+aaicompute = function(data){
+  data$aaiscore = 0
+  start = which(names(data)=="q91")
+  finish = which(names(data)=="q95")
+  for(i in seq(from=start, to=finish)){
+    data$aaiscore = data$aaiscore + (data[,i]*(20))
+  }
+  return(round(data$aaiscore))
+}
+
+
+quest9compute = function(data){
+  data$q9score = 0
+  start = which(names(data)=="q91")
+  finish = which(names(data)=="q95")
+  for(i in seq(from=start, to=finish)){
+    data$q9score = data$q9score + (data[,i]*(20))
+  }
+  return(round(data$q9score))
+}
+
+gdcompute = function(data){
+  data$gdscore = 0
+  start = which(names(data)=="q101")
+  finish = which(names(data)=="q1010")
+  for(i in seq(from=start, to=finish)){
+    data$gdscore = data$gdscore + data[,i]*5
+  }
+  data$gdscoreadd = 0
+  start = which(names(data)=="q111")
+  finish = which(names(data)=="q115")
+  for(i in seq(from=start, to=finish)){
+    data$gdscoreadd = data$gdscoreadd + (data[,i]*5)
+  }
+  data$gdscore = data$gdscore + data$gdscoreadd
+  return(round(data$gdscore))
+}
+
+
+quest10compute = function(data){
+  data$q10score = 0
+  start = which(names(data)=="q101")
+  finish = which(names(data)=="q1010")
+  for(i in seq(from=start, to=finish)){
+    data$q10score = data$q10score + data[,i]*5
+  }
+  return(round(data$q10score))
+}
+
+
+
+quest11compute = function(data){
+  data$q11score = 0
+  start = which(names(data)=="q111")
+  finish = which(names(data)=="q115")
+  for(i in seq(from=start, to=finish)){
+    data$q11score = data$q11score + (data[,i]*5)
+  }
+  return(round(data$q11score))
+}
+```
+
+
+```{r p2, include=TRUE, fig.height=6 , fig.width=12 ,echo=FALSE, dev='svg'}
+######################################
+
+###### ORGANIZE THE DATA #############
+
+######################################
+
+#recode the varnames so that they are not so messy as they are rn
+
+varnames = c("time",
+             "sme_name",
+             "assess_date",
+             "ent_name",
+             "fiscal_code",
+             "q11ai",
+             "q11pi",
+             "q12ai",
+             "q12pi",
+             "q13ai",
+             "q13pi",
+             "q14ai",
+             "q14pi",
+             "q15ai",
+             "q15pi",
+             "q16ai",
+             "q16pi",
+             "q17ai",
+             "q17pi",
+             "q18ai",
+             "q18pi",
+             "q19ai",
+             "q19pi",
+             "q110ai",
+             "q110pi",
+             "q21",
+             "q22",
+             "q23",
+             "q24",
+             "q25",
+             "q26",
+             "q27",
+             "q28",
+             "q29",
+             "q210",
+             "q31",
+             "q32",
+             "q33",
+             "q34",
+             "q35",
+             "q36",
+             "q37",
+             "q38",
+             "q39",
+             "q310",
+             "q41",
+             "q42",
+             "q43",
+             "q44",
+             "q45",
+             "q46",
+             "q47",
+             "q51",
+             "q52",
+             "q53",
+             "q54",
+             "q55",
+             "q56",
+             "q57",
+             "q61",
+             "q62",
+             "q63",
+             "q64",
+             "q65",
+             "q66",
+             "q67",
+             "q68",
+             "q71",
+             "q72",
+             "q73",
+             "q74",
+             "q75",
+             "q76",
+             "q77",
+             "q78",
+             "q81",
+             "q82",
+             "q83",
+             "q84",
+             "q85",
+             "q86",
+             "q91",
+             "q92",
+             "q93",
+             "q94",
+             "q95",
+             "q101",
+             "q102",
+             "q103",
+             "q104",
+             "q105",
+             "q106",
+             "q107",
+             "q108",
+             "q109",
+             "q1010",
+             "q111",
+             "q112",
+             "q113",
+             "q114",
+             "q115")
+
+
+library(readxl)
+data <- read_excel(paste0(datafolder,"/dma_tool_form.xlsx"))
+#data <- read.csv("DMA SME.csv")
+
+
+data = as.data.frame(data)
+
+
+
+names(data) = varnames
+
+# Recode the variables as something that is actually readable
+
+data$assess_date <- as.Date(data$assess_date)
+#data$assess_date = format(data$assess_date, "%d-%m-%Y")
+
+data$assess_date=as.Date(data$assess_date, "%d/%m/%Y")
+
+
+# FILTER OUT DATES THAT ARE BEFORE 2022
+
+#data <- data[data$assess_date >= as.Date("2022-01-01"), ]
+
+# Define a mapping of character values to numeric values
+char_to_numeric <- c("T0" = 0, "T1" = 1, "T2" = 2)
+
+# Use the mapping to create a new numeric variable
+data$time <- char_to_numeric[data$time]
+
+# The loop below handles the coding of the variable into a single 0-1 dummy for each variable
+# The coldelete detects variables to be deleted (q1 will still have names ending in "no" nevertheless.
+# at least for now)
+
+
+start = which(names(data)=="q11ai")
+finish = which(names(data)=="q110pi")
+for(i in seq(from=start, to=finish)){
+  data[,i] = ifelse((data[,i] == "X"), 1,
+                    ifelse((is.na(data[,i])), 0, 0))
+  data[,i] = ifelse((is.na(data[,i])), 0, 1)
+}
+#coldelete = seq(from = start + 1, to = finish, by=2)
+#data = data[, -c(coldelete)]
+#varnames = names(data)
+
+# Now for questions 2 and 3 we repeat the procedure, but we do not need to delete
+# any columns actually
+
+start = which(names(data)=="q21")
+finish = which(names(data)=="q310")
+for(i in start : finish){
+  data[,i] = ifelse((data[,i] == "Yes"), 1,
+                    ifelse((data[,i] == "No"), 0, 0))
+}
+
+# For question 4 we actually have different levels of the answers. Since they are given
+# respective values in the DMA report documentation, I am going to stick with those value
+# scale.
+
+start = which(names(data)=="q41")
+finish = which(names(data)=="q47")
+for(i in start : finish){
+  data[,i] = ifelse((data[,i] == "Not used"), 0,
+                    ifelse((data[,i] == "Consider to use"), 0.2,
+                           ifelse((data[,i] == "Prototyping"),0.4,
+                                  ifelse((data[,i] == "Testing"),0.6,
+                                         ifelse((data[,i] == "Implementing"), 0.8,
+                                                ifelse((data[,i] == "Operational"), 1, 0))))))
+}
+
+# Now, question that go from 5 to 8 are all the same with 0 1 replies (apart from
+# q72 which gives only 0 points, NEED TO KEEP IN MIND THIS FOR SCORE COMPUTATION)
+
+start <- which(names(data) == "q51")
+finish <- which(names(data) == "q86")
+
+for (i in start:finish) {
+  # Convert factor to character if needed
+  if (is.factor(data[, i])) {
+    data[, i] <- as.character(data[, i])
+  }
+  
+  # Convert "Yes"/"No" to 1/0 and everything else to 0
+  data[, i] <- ifelse(data[, i] == "Yes", 1,
+                      ifelse(data[, i] == "No", 0, 
+                             ifelse(is.na(data[, i]), 0, 0)))
+  
+  # If there are still NA values, print the column name and the number of NAs
+  if (sum(is.na(data[, i])) > 0) {
+    cat("NA values found in column:", names(data)[i], 
+        "- Number of NAs:", sum(is.na(data[, i])), "\n")
+  }
+}
+# Seems like q9 is the same as q4, so we use the same procedure
+
+start = which(names(data)=="q91")
+finish = which(names(data)=="q95")
+for(i in start : finish){
+  data[,i] = ifelse((data[,i] == "Not used"), 0,
+                    ifelse((data[,i] == "Consider to use"), 0.2,
+                           ifelse((data[,i] == "Prototyping"),0.4,
+                                  ifelse((data[,i] == "Testing"),0.6,
+                                         ifelse((data[,i] == "Implementing"), 0.8,
+                                                ifelse((data[,i] == "Operational"), 1, 0))))))
+}
+
+# Then q10 is normal again
+
+start = which(names(data)=="q101")
+finish = which(names(data)=="q1010")
+for(i in start : finish){
+  data[,i] = ifelse((data[,i] == "Yes"), 1,
+                    ifelse((data[,i] == "No"), 0, 0))
+}
+
+
+# And the last, q11, has levels that give 0, 1, or 2 points.
+
+start = which(names(data)=="q111")
+finish = which(names(data)=="q115")
+for(i in start : finish){
+  data[,i] = ifelse((data[,i] == "No"), 0,
+                    ifelse((data[,i] == "Partially"), 1,
+                           ifelse((data[,i] == "Yes"), 2, 0)))
+}
+
+
+# Here we try to compute the individual scores and the overall score
+# to later check if they are in line with the precomputed ones
+
+data = dmascorecompute(data)
+
+###############################################
+
+### ATTEMPT TO FIND AND DESTROY TEST OBS ######
+
+###############################################
+
+# Create a vector with all names that could be "tests" right away
+
+# testnames = c("test", "deleteme", "esempio", "teszt")
+
+# Check where they are
+
+# rowstodelete = which(data$ent_name %in% testnames)
+
+# rowstodelete
+
+# Seems to tiresome to check it like this. Let's try to merge the dataset with
+# DMA scores summed up and then check VAT scores whenever possible (based on the country)
+
+
+
+data2=read_excel(paste0(datafolder,"/my-smes-dma-results.xlsx"))
+
+varnames2 = c("sme_name",
+              "fiscal_code",
+              "country",
+              "region",
+              "sector",
+              "size",
+              "time",
+              "assess_date",
+              "dma_score",
+              "dig_business_strat",
+              "dig_readiness",
+              "hum_centr_dig",
+              "data_gov",
+              "automation_ai",
+              "green_dig",
+              "edih_name",
+              "edih_type",
+              "mail")
+
+names(data2) = varnames2
+
+data2 = as.data.frame(data2)
+
+data2 <- data2[, -ncol(data2)]
+#print(data2)
+
+
+library(lubridate)
+library(stringr)
+
+
+# Convert the assess_date column to Date format
+data2$assess_date <- dmy(data2$assess_date)
+
+# Format the assess_date column as "dd/mm/yyyy"
+# data2$assess_date <- format(data2$assess_date, "%d-%m-%Y")
+
+
+# data2$assess_date <- dmy(data2$assess_date)
+
+data2$assess_date=as.Date(data2$assess_date)
+
+
+# FILTER OUT DATES THAT ARE BEFORE 2022
+
+data2 <- data2[data2$assess_date >= as.Date("2022-01-01"), ]
+
+
+# Use the mapping to create a new numeric variable
+data2$time <- char_to_numeric[data2$time]
+
+
+
+checks = c("sme_name", "fiscal_code", "time", "assess_date")
+
+datamerge = merge(data, data2, by = checks)
+
+
+# Now, let's create column for checking if the subdimension scores and the overall
+# score matches what we computed by ourselves.
+
+datamerge$dma_bias = datamerge$dmascore - datamerge$dma_score
+datamerge$dbs_bias = datamerge$dbsscore - datamerge$dig_business_strat
+datamerge$dr_bias = datamerge$drscore - datamerge$dig_readiness
+datamerge$hcd_bias = datamerge$hcdscore - datamerge$hum_centr_dig
+datamerge$dm_bias = datamerge$dmscore - datamerge$data_gov
+datamerge$aai_bias = datamerge$aaiscore - datamerge$automation_ai
+datamerge$gd_bias = datamerge$gdscore - datamerge$green_dig
+
+
+
+
+# This following check actually when you inspect the data shows that lots of
+# unmatched entries are legit companies, just are the more recent questionaires.
+# So, maybe for now we keep them out, but we should keep them in the future.
+
+data3 = datamerge[,c(1:5,100)]
+
+nas = which(is.na(data3[,6]))
+
+data3 = data3[nas,]
+
+# After the merge, the only observations with t1 or t2 are clearly tests. We can try to drop them
+
+rowstodelete = c(which(datamerge$time == 1 | datamerge$time == 2))
+
+datamerge = datamerge[-c(rowstodelete),]
+
+# chchchch
+
+library(ggplot2)
+
+piedata = data.frame(table(data2$sector))
+
+# Set your threshold
+threshold <- 20
+
+# Filter data based on the threshold
+filtered_data <- piedata[piedata$Freq >= threshold, ]
+
+ggplot(piedata, aes(x = "", y = Freq, fill = Var1)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +
+  theme_void() +
+  theme(legend.position = "none") +
+  geom_text(aes(label = Var1), position = position_stack(vjust = 0.5))
+
+ggplot(filtered_data, aes(x = "", y = Freq, fill = Var1)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +
+  theme_void() +
+  theme(legend.position = "none") +
+  geom_text(aes(label = Var1), position = position_stack(vjust = 0.5))
+
+# Create a bar chart with labels for all bars
+bar_chart <- ggplot(piedata, aes(x = reorder(Var1, -Freq), y = Freq)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = Freq), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "DMA Replies by Sector", x = "Category", y = "Frequency") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  # Rotate x-axis labels
+
+# Print the bar chart
+print(bar_chart)
+
+
+# Create the modified bar chart with labels for selected bars
+bar_chart <- ggplot(filtered_data, aes(x = reorder(Var1, -Freq), y = Freq)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = Freq), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "DMA Replies by Sector", x = "Category", y = "Frequency") +
+  scale_x_discrete(labels = function(x) sapply(x, function(label) {
+        if (label == "Agricultural biotechnology and food biotechnology") {
+            "Agricultural and food biotech"
+        } else {
+            label
+        }
+    })) +
+  theme(axis.text.x = element_text(angle = 70, hjust = 1, face = "bold", size=12),  # Rotate x-axis labels and make them bold
+        axis.title.x = element_blank(),
+        plot.margin = margin(t = 20, r = 20, b = 20, l = 20)) +  # Add margin to the plot area
+        ylim(0, max(filtered_data$Freq) + 50)
+
+# Print the modified bar chart
+print(bar_chart)
+
+ggsave(filename = file.path(outputfolder, "dmasectorsbargraph.png"), plot = last_plot(), device = "png", width = 12, height = 7, bg = "white")
+
+sizedata = data.frame(table(data2$size))
+
+ggplot(sizedata, aes(x = "", y = Freq, fill = Var1)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +
+  theme_void() +
+  theme(legend.position = "none") +
+  geom_text(aes(label = Var1), position = position_stack(vjust = 0.5))
+
+bar_chart <- ggplot(sizedata, aes(x = reorder(Var1, -Freq), y = Freq)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = Freq), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "DMA Replies by Size", x = "Size", y = "Frequency") +
+  scale_x_discrete(labels = function(x) sapply(x, function(label) {
+        if (nchar(label) > 18) {
+            paste(strwrap(label, width = 18), collapse = "\n")
+        } else {
+            label
+        }
+    })) +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5, face = "bold", lineheight = 1.2, size = 12),  # Bold, centered, multiline, and larger size
+        axis.title.x = element_blank(),
+        plot.margin = margin(t = 20, r = 20, b = 20, l = 20)) +  # Add margin to the plot area
+        ylim(0, max(sizedata$Freq) + 150)  # Set the y-axis limits
+
+# Print the modified bar chart
+print(bar_chart)
+
+ggsave(filename = file.path(outputfolder, "dmafirmsizebargraph.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+
+countrydata = data.frame(table(data2$country, data2$edih_type))
+
+ggplot(countrydata, aes(x = "", y = Freq, fill = Var1)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +
+  theme_void() +
+  theme(legend.position = "none") +
+  geom_text(aes(label = Var1), position = position_stack(vjust = 0.5))
+
+bar_chart <- ggplot(countrydata, aes(x = reorder(Var1, -Freq), y = Freq)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = Freq), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "DMA Replies by Country", x = "", y = "Frequency") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+bar_chart <- ggplot(countrydata, aes(x = reorder(Var1, -Freq), y = Freq, fill = Var2)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("steelblue", "lightblue")) +  # Assigning different colors
+  labs(title = "DMA Replies by Country and EDIH Type", x = "Country", y = "Frequency") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+print(bar_chart)
+
+
+countrydata = data.frame(table(data2$edih_type))
+
+ggplot(countrydata, aes(x = "", y = Freq, fill = Var1)) +  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +
+  scale_fill_manual(values = c("steelblue", "lightblue")) +
+  theme_void() +
+  theme(legend.position = "none") +
+  geom_text(aes(label = Var1), position = position_stack(vjust = 0.5))
+
+
+bar_chart <- ggplot(countrydata, aes(x = reorder(Var1, -Freq), y = Freq)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = Freq), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Type of EDIH respondents", x = "", y = "Frequency") +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1, color = "darkblue", size = 18))  # Rotate x-axis labels
+
+print(bar_chart)
+
+
+
+
+
+# countrydata = data.frame(table(data2$region))
+# 
+# ggplot(countrydata, aes(x = "", y = Freq, fill = Var1)) +
+#   geom_bar(stat = "identity", width = 1) +
+#   coord_polar(theta = "y") +
+#   theme_void() +
+#   theme(legend.position = "none") +
+#   geom_text(aes(label = Var1), position = position_stack(vjust = 0.5))
+# 
+# bar_chart <- ggplot(countrydata, aes(x = reorder(Var1, -Freq), y = Freq)) +
+#   geom_bar(stat = "identity", fill = "steelblue") +
+#   geom_text(aes(label = Freq), vjust = -0.5, size = 4) +  # Label placement and size
+#   labs(title = "Bar Chart with Labels", x = "Category", y = "Frequency") +
+#   theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels
+# 
+# print(bar_chart)
+
+
+#################################################
+
+##### THE ACTUAL ANALYSIS #######################
+
+#################################################
+
+
+
+
+# Histograms of the date of the observations seems to suggest the presence of a 
+# bunch of testing entries in the dataset
+
+hist(data2$assess_date, breaks = "days", freq=TRUE)
+hist(data2$assess_date, breaks = "months", freq=TRUE,
+     main = "DMA Replies by Assessment Date",
+     xlab = "", col = "skyblue",
+     border = "darkblue")
+
+# Sort the data by assess_date
+orderdata2 <- data2[order(data2$assess_date), ]
+
+# Create a sequence of dates from the minimum to maximum assess_date
+date_seq <- seq(min(orderdata2$assess_date), max(orderdata2$assess_date), by="day")
+
+# Calculate the cumulative number of observations month by month
+cumulative_count <- sapply(date_seq, function(date) {
+  sum(orderdata2$assess_date <= date)
+})
+
+# Find the index for January 2023 and February 2024
+index_jan_2023 <- which(format(date_seq, "%Y-%m") == "2023-01")[1]
+index_feb_2024 <- which(format(date_seq, "%Y-%m") == "2024-03")[1]
+
+# Plot the cumulative number of observations up to January 2023
+plot(date_seq[index_jan_2023:index_feb_2024], cumulative_count[index_jan_2023:index_feb_2024], type="l", col="darkblue", lwd=2, xlab="Date", ylab="Cumulative Count", main="Cumulative Number of Observations")
+
+### SAME GRAPH BUT FOR THE DATA DATAFRAME
+
+# Sort the data by assess_date
+orderdata <- data[order(data$assess_date), ]
+
+# Create a sequence of dates from the minimum to maximum assess_date
+date_seq <- seq(min(orderdata$assess_date), max(orderdata$assess_date), by="day")
+
+# Calculate the cumulative number of observations month by month
+cumulative_count <- sapply(date_seq, function(date) {
+  sum(orderdata$assess_date <= date)
+})
+
+# Find the index for January 2023 and February 2024
+index_jan_2023 <- which(format(date_seq, "%Y-%m") == "2023-01")[1]
+index_feb_2024 <- which(format(date_seq, "%Y-%m") == "2024-03")[1]
+
+# Plot the cumulative number of observations up to January 2023
+plot(date_seq[index_jan_2023:index_feb_2024], cumulative_count[index_jan_2023:index_feb_2024], type="l", col="darkblue", lwd=2, xlab="Date", ylab="Cumulative Count", main="Cumulative Number of Observations")
+
+
+
+
+
+
+
+hist(data2$assess_date, breaks = "years", freq=TRUE)
+
+hist(data2$time, freq=TRUE)
+
+hist(datamerge$assess_date, breaks = "days", freq=TRUE)
+hist(datamerge$assess_date, breaks = "months", freq=TRUE)
+hist(datamerge$assess_date, breaks = "years", freq=TRUE)
+
+hist(datamerge$time, freq=TRUE)
+
+
+
+
+
+#seems like most of the smes are just obs in t0, I am wondering if obs in t1 are genuine 
+#or if they are just random errors on the part of those who inserted the data
+
+
+# NOTE : we could use identity of sme name and enterprise name as a check for testing entries
+# update: actually not a good idea, lots of typos :(
+
+# check for the fiscal registration number and frequency of tests (look for how to do it)
+# check if name includes test or tests as string 
+# check observation that are registered before the launch of the problem 
+
+# check if the aggregated data includes the test data (!!!!)
+
+
+
+hist(datamerge$dma_bias, 
+     main = "Bias in the DMA overall score",
+     xlab = ""
+)
+
+hist(datamerge$dbs_bias, 
+     main = "Bias in Dimension 1",
+     xlab = ""
+)
+hist(datamerge$dr_bias, 
+     main = "Bias in Dimension 2",
+     xlab = ""
+)
+hist(datamerge$hcd_bias, 
+     main = "Bias in Dimension 3",
+     xlab = ""
+)
+hist(datamerge$dm_bias, 
+     main = "Bias in Dimension 4",
+     xlab = ""
+)
+hist(datamerge$aai_bias, 
+     main = "Bias in Dimension 5",
+     xlab = ""
+)
+hist(datamerge$gd_bias, 
+     main = "Bias in Dimension 6",
+     xlab = ""
+)
+
+
+library(ggplot2)
+```
+
+From the graphs above we can see that, while the DMA score computation looks incorrect, the error
+stems from just 3 dimensions out of 6: dimension 2,3 and 4, with dimension 2 being the most
+"biased" one on average. 
+
+
+```{r p3, echo = FALSE, warning=FALSE, message=FALSE, fig.height=5, fig.width=12}
+# Create a vector with all names that could be "tests" right away
+testnames = c("test", "deleteme", "esempio", "teszt", "example", "^(?:[^?]*\\?){4,}[^?]*$", "Test", "favorite", "TESTE", NA)
+
+# Create an empty logical vector to mark rows for deletion
+rows_to_delete = logical(nrow(data))
+
+# Check if the ent_name contains any of the testnames
+for (testname in testnames) {
+  rows_to_delete = rows_to_delete | grepl(testname, data$sme_name)
+}
+
+# Find the indices of rows to delete
+rows_to_delete_indices = which(rows_to_delete)
+
+# Display the rows to delete
+rows_to_delete_indices
+
+print(data[rows_to_delete_indices,])
+
+data <- data[-c(rows_to_delete_indices),]
+data <- data[!is.na(data$ent_name),]
+
+
+
+# Create a vector with all names that could be "tests" right away
+testnames = c("test", "deleteme", "esempio", "teszt", "example", "^(?:[^?]*\\?){4,}[^?]*$", "Test", "favorite")
+
+# Create an empty logical vector to mark rows for deletion
+rows_to_delete = logical(nrow(datamerge))
+
+# Check if the ent_name contains any of the testnames
+for (testname in testnames) {
+  rows_to_delete = rows_to_delete | grepl(testname, datamerge$ent_name)
+}
+
+# Find the indices of rows to delete
+rows_to_delete_indices = which(rows_to_delete)
+
+# Display the rows to delete
+rows_to_delete_indices
+
+print(datamerge[rows_to_delete_indices,])
+
+datamerge <- datamerge[-c(rows_to_delete_indices),]
+
+
+
+
+
+# Check for the presence of lowercase letters in the fiscal_code column
+has_lowercase <- grepl("[a-z]", datamerge$fiscal_code, ignore.case = FALSE)
+
+# Check for observations with names consisting of only numbers (no letters)
+only_numbers <- grepl("^[0-9]+$", datamerge$sme_name)
+
+# Filter the dataframe to select rows with names consisting of only numbers
+observations_with_only_numbers <- datamerge[only_numbers, ]
+
+# Display the observations with names consisting of only numbers
+print(observations_with_only_numbers)
+
+
+# SAME EXACT THING BUT FOR DATA2
+
+# Filter the dataframe to select rows with lowercase letters
+observations_with_lowercase <- data2[has_lowercase, ]
+
+# Filter the dataframe to select rows with lowercase letters
+observations_with_lowercase <- data2[has_lowercase, ]
+
+# Display the observations with lowercase letters
+print(observations_with_lowercase)
+
+
+# Create a vector with all names that could be "tests" right away
+testnames = c("test", "deleteme", "esempio", "teszt", "example", "^(?:[^?]*\\?){4,}[^?]*$", "Test", "favorite", "sme", "SME")
+
+# Create an empty logical vector to mark rows for deletion
+rows_to_delete = logical(nrow(data2))
+
+# Check if the ent_name contains any of the testnames
+for (testname in testnames) {
+  rows_to_delete = rows_to_delete | grepl(testname, data2$sme_name)
+}
+
+# Find the indices of rows to delete
+rows_to_delete_indices = which(rows_to_delete)
+
+# Display the rows to delete
+rows_to_delete_indices
+
+print(data2[rows_to_delete_indices,])
+
+data2 <- data2[-c(rows_to_delete_indices),]
+
+countrydata = data.frame(table(data2$country))
+
+# Create the polar bar plot
+# ggplot(countrydata, aes(x = "", y = Freq, fill = Var1)) +
+#   geom_bar(stat = "identity", width = 1) +
+#   coord_polar(theta = "y") +
+#   theme_void() +
+#   geom_text(aes(label = Var1, y = cumsum(Freq) - 0.5 * Freq), size = 4) +
+#   theme(legend.position = "none")
+
+
+bar_chart <- ggplot(countrydata, aes(x = reorder(Var1, -Freq), y = Freq)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = Freq), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "DMA Replies by Country", x = "", y = "Frequency") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"))  # Rotate x-axis labels and make them bold
+
+#print(bar_chart)
+
+# Save the polar plot to a file
+ggsave(paste0(outputfolder,"/dma_country_distr_col.png"), plot = bar_chart, width = 8, height = 6)
+
+# Check for the presence of lowercase letters in the fiscal_code column
+has_lowercase <- grepl("[a-z]", data2$fiscal_code, ignore.case = FALSE)
+
+# Check for observations with names consisting of only numbers (no letters)
+only_numbers <- grepl("^[0-9]+$", data2$sme_name)
+
+# Filter the dataframe to select rows with names consisting of only numbers
+observations_with_only_numbers <- data2[only_numbers, ]
+
+# Display the observations with names consisting of only numbers
+print(observations_with_only_numbers)
+
+
+
+
+# Filter the dataframe to select rows with lowercase letters
+observations_with_lowercase <- data2[has_lowercase, ]
+
+# Filter the dataframe to select rows with lowercase letters
+observations_with_lowercase <- data2[has_lowercase, ]
+
+# Display the observations with lowercase letters
+print(observations_with_lowercase)
+
+
+
+
+```
+
+```{r 34,echo = FALSE, warning=FALSE, message=FALSE, fig.height=5, fig.width=9}
+data <- data[-c(which(is.na(data$dmascore))),]
+
+
+#################################################
+######### NA TREATMENTS #########################
+#################################################
+
+
+# Find the column indices for q11ai and q115
+start_index <- which(names(data) == "q11ai")
+finish_index <- which(names(data) == "dmascore")
+
+# Check the number of NA values in the range before replacement
+na_count_before <- sum(is.na(data[, start_index:finish_index]))
+cat("Number of NA values in range q11ai to q115 before replacement:", na_count_before, "\n")
+
+# Loop over the column range and replace NA values with 0
+for (i in start_index:finish_index) {
+  data[, i][is.na(data[, i])] <- 0
+}
+
+# Check the number of NA values in the range again
+na_count_after <- sum(is.na(data[, start_index:finish_index]))
+cat("Number of NA values in range q11ai to q115 after replacement:", na_count_after, "\n")
+
+# NOW FOR DATAMERGE
+
+# Find the column indices for q11ai and q115
+start_index <- which(names(datamerge) == "q11ai")
+finish_index <- which(names(datamerge) == "dmascore")
+
+# Check the number of NA values in the range before replacement
+na_count_before <- sum(is.na(datamerge[, start_index:finish_index]))
+cat("Number of NA values in range q11ai to q115 before replacement:", na_count_before, "\n")
+
+# Loop over the column range and replace NA values with 0
+for (i in start_index:finish_index) {
+  datamerge[, i][is.na(datamerge[, i])] <- 0
+}
+
+# Check the number of NA values in the range again
+na_count_after <- sum(is.na(datamerge[, start_index:finish_index]))
+cat("Number of NA values in range q11ai to q115 after replacement:", na_count_after, "\n")
+
+
+
+
+
+hist(data2$dma_score, 
+     main = "DMA overall score",
+     xlab = "", col = "skyblue",
+     border = "darkblue"
+)
+
+
+
+# Assuming data is the name of your data frame
+hist(data2$dig_business_strat, main = "Digital Business Strategy", xlab = "", col = "skyblue",
+     border = "darkblue")  # Set histogram color and border color
+
+
+
+hist(data2$dig_readiness, 
+     main = "Digital Readiness",
+     xlab = "", col = "skyblue",
+     border = "darkblue"
+)
+hist(data2$hum_centr_dig, 
+     main = "Human Centric Digitalisation",
+     xlab = "", col = "skyblue",
+     border = "darkblue"
+)
+hist(data2$data_gov, 
+     main = "Data Management",
+     xlab = "", col = "skyblue",
+     border = "darkblue"
+)
+hist(data2$automation_ai, 
+     main = "Automation & Intelligence",
+     xlab = "", col = "skyblue",
+     border = "darkblue"
+)
+hist(data2$green_dig, 
+     main = "Green Digitalisation",
+     xlab = "", col = "skyblue",
+     border = "darkblue"
+)
+
+start = which(names(data2)=="dma_score")
+finish = which(names(data2)=="green_dig")
+for(i in start : finish){
+  hist(data2[,i], main = names(data2)[i], xlab = "", col = "skyblue",
+     border = "darkblue", breaks = seq(0,100,1))  # Set histogram color and border color
+} 
+
+
+start = which(names(data)=="q1score")
+finish = which(names(data)=="q11score")
+for(i in start : finish){
+  hist(data[,i], main = names(data)[i], xlab = "", col = "skyblue",
+     border = "darkblue", breaks = seq(0,100,10))  # Set histogram color and border color
+}
+```
+
+
+```{r 22,echo = FALSE, warning=FALSE, message=FALSE, fig.height=7, fig.width=7}
+library(moments)
+library(corrplot)
+
+# Calculate the absolute skewness and kurtosis
+abs_skewness <- c()
+kurtosis <- c()
+indicators = data[,c(102:108)]
+for(i in 1:length(names(indicators))){
+  abs_skewness[i] <- abs(skewness(indicators[,i]))
+  kurtosis[i] <- kurtosis(indicators[,i])
+}
+
+
+# Create a color palette function with colorRampPalette
+my_palette <- colorRampPalette(c("#00FF00", "#FF0000"))
+
+# Define the number of colors you want in your palette
+num_colors <- 100  # for example, if you want 100 shades from dark green to maroon
+
+# Generate the color palette
+colors <- my_palette(num_colors)
+
+abs_skewness=matrix(t(abs_skewness))
+rownames(abs_skewness) = names(indicators)
+colnames(abs_skewness)="Abs. Skewness"
+
+corrplot(abs_skewness, method = "number", is.corr=FALSE, col = colors, col.lim = c(0,2), cl.align.text= "l")
+
+kurtosis=matrix(t(kurtosis))
+rownames(kurtosis) = names(indicators)
+colnames(kurtosis)="Kurtosis"
+
+
+corrplot(kurtosis, method = "number", is.corr=FALSE, col = colors, col.lim = c(0,6), cl.align.text= "l")
+
+# Print the results
+print(paste("Absolute skewness:", abs_skewness))
+print(paste("Absolute kurtosis:", kurtosis))
+
+
+
+
+
+# Load the corrplot package
+library(corrplot)
+
+
+
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(datamerge[,c(102:108)])
+
+# Create the correlation graph
+corrplot(correlation_matrix, method = "number")
+
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(data[,c(102:108)])
+
+# Create the correlation graph
+corrplot(correlation_matrix, method = "number")
+
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(data[,c(103:108)])
+
+# Create the correlation graph
+corrplot(correlation_matrix, method = "number")
+
+
+verysmallcorrmatrix <- correlation_matrix
+
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(datamerge[,c(102:108)])
+
+# Create the correlation graph
+corrplot(correlation_matrix, method = "circle")
+
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(data[,c(102:108)])
+
+# Create the correlation graph
+corrplot(correlation_matrix, method = "circle")
+
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(data[,c(103:108)])
+
+# Create the correlation graph
+corrplot(correlation_matrix, method = "circle")
+
+
+# TRY WITH COLOR CODING FOR COIN ANALYSIS
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# NOW A TRY WITH THE SINGULAR QUESTIONS
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(datamerge[,-c(1:5,6:101,119:139)])
+
+# Create the correlation graph
+corrplot(correlation_matrix, method = "number")
+
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(data[,c(102,109:119)])
+
+# Create the correlation graph
+corrplot(correlation_matrix, method = "number")
+
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(data[,c(109:119)])
+
+# Create the correlation graph
+corrplot(correlation_matrix, method = "number")
+
+
+
+thesmallcorrmatrix <- correlation_matrix
+```
+
+
+
+```{r 35,echo = FALSE, warning=FALSE, message=FALSE, fig.height=40, fig.width=40, dev= 'svg'}
+library(polycor)
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(datamerge[,c(102,6:101)])
+
+# Create the correlation graph
+corrplot(correlation_matrix, method = "number", number.font =30)
+
+
+thebigcorrmatrix <- correlation_matrix
+
+
+
+# Let's assume df is your dataframe with ordinal variables
+df <- datamerge[,c(102,6:101)]
+
+# Use hetcor to compute the polychoric correlation matrix
+hetcor_result <- hetcor(df, ML=TRUE)  # ML=TRUE specifies to use maximum likelihood estimation
+
+# The polychoric correlation matrix will be in hetcor_result$correlations
+cor_matrix <- hetcor_result$correlations
+
+# Print the correlation matrix
+thebigpolycorrmatrix <- cor_matrix
+
+
+
+```
+
+
+```{r 38,echo = FALSE, warning=FALSE, message=FALSE, fig.height=10, fig.width=10}
+# Calculate the correlation matrix
+correlation_matrix <- cor(datamerge[,c(102, 6:25)])
+
+# Create the correlation graph
+corrplot(correlation_matrix, method = "number")
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(datamerge[,c(102, 26:35)])
+
+# Create the correlation graph
+corrplot(correlation_matrix, method = "number")
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(datamerge[,c(102, 36:45)])
+
+# Create the correlation graph
+corrplot(correlation_matrix, method = "number")
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(datamerge[,c(102, 46:52)])
+
+# Create the correlation graph
+corrplot(correlation_matrix, method = "number")
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(datamerge[,c(102, 53:59)])
+
+# Create the correlation graph
+corrplot(correlation_matrix, method = "number")
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(datamerge[,c(102, 60:67)])
+
+# Create the correlation graph
+corrplot(correlation_matrix, method = "number")
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(datamerge[,c(102, 68:75)])
+
+# Create the correlation graph
+corrplot(correlation_matrix, method = "number")
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(datamerge[,c(102, 76:81)])
+
+# Create the correlation graph
+corrplot(correlation_matrix, method = "number")
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(datamerge[,c(102, 82:86)])
+
+# Create the correlation graph
+corrplot(correlation_matrix, method = "number")
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(datamerge[,c(102, 87:96)])
+
+# Create the correlation graph
+corrplot(correlation_matrix, method = "number")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(datamerge[,c(102, 97:101)])
+
+# Create the correlation graph
+corrplot(correlation_matrix, method = "number")
+
+
+
+
+
+
+
+
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(datamerge[,c(68:82)])
+
+# Create the correlation graph
+corrplot(correlation_matrix, method = "number")
+```
+
+
+
+```{r 36,echo = FALSE, warning=FALSE, message=FALSE, fig.height=7, fig.width=7}
+# ATTEMPT TO WRITE A FUNCTION TO ELIMINATE ONE QUESTION AT A TIME 
+# AND SEE HOW THE SCORE IS AFFECTED
+
+dmawithoutcompute = function(data, i){
+  data$sumscore = 0
+  start = which(names(data)=="q1score")
+  finish = which(names(data)=="q11score")
+  todolist = seq(start, finish, 1)
+  todolist = todolist[-c( i - start + 1 )]
+  for (x in todolist){
+    data$sumscore = data$sumscore + data[,x]
+  }
+  data$dmawithout = ifelse(i == 9, 
+                           (data$sumscore *2)/length(todolist), 
+                           ( ( ( (data$sumscore - data$q9score) * 2 ) / (length(todolist) - 1) ) + data$q9score ) / 2 )
+  return(data$dmawithout)
+}
+
+sensitivity = function(data){
+  start = which(names(data)=="q1score")
+  finish = which(names(data)=="q11score")
+  count=1
+  for(i in start:finish){
+    data[[as.character(i)]] = dmawithoutcompute(data, i)
+    count = count + 1
+  }
+  return(data)
+}
+
+
+datamerge = sensitivity(datamerge)
+
+
+names(datamerge)[140:150] = c("noq1score",
+                              "noq2score",
+                              "noq3score",
+                              "noq4score",
+                              "noq5score",
+                              "noq6score",
+                              "noq7score",
+                              "noq8score",
+                              "noq9score",
+                              "noq10score",
+                              "noq11score")
+
+
+plot(datamerge$dmascore-datamerge$noq1score)
+
+
+
+
+
+
+```
+
+
+
+
+
+
+```{r maps, dev='svg', echo = FALSE, warning=FALSE, message=FALSE}
+library(stringr)
+
+for (i in 1:nrow(data2)) {
+  pattern_matches <- str_locate_all(data2$region[i], c(",", "/"))
+  if (length(pattern_matches[[1]]) > 0) {
+    data2$region[i] <- str_sub(data2$region[i], 1, pattern_matches[[1]][[1]][1] - 1)
+  }
+}
+
+
+
+
+
+library(stringr)
+library(eurostat)
+library(dplyr)
+library(sf)
+library(ggplot2)
+
+# Load data
+nuts_metadata <- get_eurostat_geospatial(year = "2021")
+nuts_metadata <- nuts_metadata[nuts_metadata$LEVL_CODE == 2, ]
+
+# Correction to region names in the nuts metadata
+nuts_metadata$NAME_LATN <- ifelse(nuts_metadata$NAME_LATN == "Comunidad Valenciana", "Comunitat Valenciana", nuts_metadata$NAME_LATN)
+nuts_metadata$NAME_LATN <- ifelse(nuts_metadata$NAME_LATN == "Anatoliki Makedonia, Thraki", "Anatoliki Makedonia", nuts_metadata$NAME_LATN)
+nuts_metadata$NAME_LATN <- ifelse(nuts_metadata$NAME_LATN == "Agder og Sør-Østlandet", "Sør-Østlandet", nuts_metadata$NAME_LATN)
+nuts_metadata$NAME_LATN <- ifelse(nuts_metadata$NAME_LATN == "Oslo og Viken", "Oslo og Akershus", nuts_metadata$NAME_LATN)
+nuts_metadata$NAME_LATN <- ifelse(nuts_metadata$NAME_LATN == "Liechtenstein", "Vaduz", nuts_metadata$NAME_LATN)
+nuts_metadata$NAME_LATN <- ifelse(nuts_metadata$NAME_LATN == "Centre — Val de Loire", "Centre - Val de Loire", nuts_metadata$NAME_LATN)
+nuts_metadata$NAME_LATN <- ifelse(nuts_metadata$id == "BE10", "Région de Bruells/ Brussels Hoofdstedelijk Gewest", nuts_metadata$NAME_LATN)
+
+
+
+nuts_metadata <- nuts_metadata[nuts_metadata$LEVL_CODE==2,]
+nuts_codes <- nuts_metadata[,c(3,5)]
+
+names(nuts_codes) <- c("region_code","region")
+
+olddatamerge <- datamerge
+
+datamerge <- merge(datamerge, nuts_codes, by="region")
+
+diffmerge = data.frame(anti_join(olddatamerge, datamerge))
+
+datamerge$country_code = substr(datamerge$region_code, 1, 2)
+
+olddata2 <- data2
+
+data2 <- merge(data2, nuts_codes, by="region")
+
+data2$country_code = substr(data2$region_code, 1, 2)
+
+diff2 = data.frame(anti_join(olddata2, data2))
+
+nuts_df <- st_read(paste0(datafolder,"/NUTS_RG_20M_2021_3035.shp"))
+
+dataplot = data.frame(table(data2$region_code))
+
+dataplot0 = data.frame(table(data2$country_code))
+
+names(data2)[19] <- "geometry"
+names(datamerge)[152] <- "geometry"
+
+
+avgscores <- data2 %>%
+  group_by(region_code) %>%
+  summarize(average_score = mean(dma_score),
+            average_dbs = mean(dig_business_strat),
+            average_dr = mean(dig_readiness),
+            average_dg = mean(data_gov),
+            average_hcd = mean(hum_centr_dig),
+            average_aai = mean(automation_ai),
+            average_gd = mean(green_dig),
+            obs=n()
+            )
+
+avgscores1 <- data2 %>%
+  group_by(country_code) %>%
+  summarize(average_score = mean(dma_score),
+            average_dbs = mean(dig_business_strat),
+            average_dr = mean(dig_readiness),
+            average_dg = mean(data_gov),
+            average_hcd = mean(hum_centr_dig),
+            average_aai = mean(automation_ai),
+            average_gd = mean(green_dig),
+            obs=n())
+
+
+# average_by_region <- aggregate(variable ~ region, data = data, FUN = mean)
+
+
+names(dataplot) = c("NUTS_ID","Var1")
+
+names(dataplot0) = c("NUTS_ID","Var1")
+
+
+dataplot$NUTS_ID = as.character(dataplot$NUTS_ID)
+# Merge dataplot and nuts_df datasets
+merged_data <- merge(dataplot, nuts_df, by = "NUTS_ID")
+
+
+
+
+
+library(sf)
+library(ggplot2)
+
+# Download NUTS shapefile from Eurostat
+nuts_shapefile <- st_read(paste0(datafolder,"/NUTS_RG_20M_2021_3035.shp"))
+
+# Filter for nuts2
+nuts2_shapefile <- nuts_shapefile[nuts_shapefile$LEVL_CODE == "2", ]
+
+# Filter for nuts1
+nuts0_shapefile <- nuts_shapefile[nuts_shapefile$LEVL_CODE == "0", ]
+
+
+# Define the bounding box for the area you want to plot
+# Replace the values with the appropriate coordinates for your desired area
+bbox <- st_bbox(c(xmin = 2000000, xmax = 7000000,
+                  ymin = 1400000, ymax = 5500000))
+
+# Crop the spatial data to the specified bounding box
+nuts0_shapefile <- st_crop(nuts0_shapefile, bbox)
+
+
+
+
+# Filter for NUTS2 regions
+# Define NUTS codes to exclude (e.g., Guyana and Turkey)
+exclude_codes <- c("FRY", "TR", "UK", "AL", "RS", "ME", "NO0B", "PT20", "ES70", "MK", "CH")
+
+for(i in 1:length(exclude_codes)){
+  nuts2_shapefile <- nuts2_shapefile[!str_detect(nuts2_shapefile$NUTS_ID, exclude_codes[i]), ]
+}
+
+# Filter for NUTS0 regions
+# Define NUTS codes to exclude (e.g., Guyana and Turkey)
+exclude_codes <- c("TR", "UK", "AL", "RS", "ME", "MK", "CH")
+
+for(i in 1:length(exclude_codes)){
+  nuts0_shapefile <- nuts0_shapefile[!str_detect(nuts0_shapefile$NUTS_ID, exclude_codes[i]), ]
+}
+
+
+
+# nuts2_shapefile <- nuts_shapefile[nuts_shapefile$LEVL_CODE == "2", ]
+
+ggplot() +
+  geom_sf(data = nuts2_shapefile, color = "black", fill = NA, size = 0.2) +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggsave(filename = file.path(outputfolder, "map1.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+merged_data <- merge(nuts2_shapefile, dataplot, by.x="NUTS_ID", by.y="NUTS_ID", all.x="TRUE")
+
+
+library(scales)
+
+
+
+ggplot() +
+  geom_sf(data = merged_data, aes(fill = Var1), color = "black", size = 0.2) +
+  scale_fill_gradientn(
+    colours = c(rgb(1, 0, 0, alpha = 0.5), "yellow", "darkgreen"), 
+    na.value = "grey",  # Color for NA values
+    name = "Nr. of obs.",
+    breaks = seq(0, max(merged_data$Var1, na.rm = TRUE), by = 50)  # Set breaks at every 50
+  ) +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggsave(filename = file.path(outputfolder, "map2.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+
+plot <- ggplot() +
+  geom_sf(data = merged_data, aes(fill = Var1), color = "black", size = 0.2) +
+  scale_fill_gradient(
+    low = "lightblue",
+    high = "darkblue", name = "Nr. of obs.", 
+    na.value = "grey"  # Color for NA values
+  ) +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggsave(paste0(outputfolder, "/provinceplot.png"), )
+
+ggplot() +
+  geom_sf(data = merged_data, aes(fill = Var1), color = "black", size = 0.2) +
+  scale_fill_gradient(
+    low = "lightblue", high = "darkblue", name = "Nr. of obs.", 
+    na.value = "#d9dbdb"  # Set breaks at every 50
+  ) +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggsave(filename = file.path(outputfolder, "map3.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+# Plot of respondents by country
+
+merged_data0 <- merge(nuts0_shapefile, dataplot0, by.x="NUTS_ID", by.y="NUTS_ID", all.x="TRUE")
+
+
+ggplot() +
+  geom_sf(data = merged_data0, aes(fill = Var1), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Nr. of obs.") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggsave(filename = file.path(outputfolder, "map4.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+# Plot of average dma scores across regions
+
+
+merge_avgscores <- merge(nuts2_shapefile, avgscores, by.x="NUTS_ID", by.y="region_code", all.x="TRUE")
+
+
+ggplot() +
+  geom_sf(data = merge_avgscores, aes(fill = average_score), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "DMA Score") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggsave(filename = file.path(outputfolder, "map5.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+
+merge1_avgscores <- merge(nuts0_shapefile, avgscores1, by.x="NUTS_ID", by.y = "country_code", all.x="TRUE")
+
+
+ggplot() +
+  geom_sf(data = merge1_avgscores, aes(fill = average_score), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "DMA Score") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggsave(filename = file.path(outputfolder, "map5.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+# Plot of average of the other scores BY NUTS2
+
+ggplot() +
+  geom_sf(data = merge_avgscores, aes(fill = average_dbs), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Dig. Business Strategy") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggsave(filename = file.path(outputfolder, "map6.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+
+ggplot() +
+  geom_sf(data = merge_avgscores, aes(fill = average_dr), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Digital Readiness") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggsave(filename = file.path(outputfolder, "map7.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+
+ggplot() +
+  geom_sf(data = merge_avgscores, aes(fill = average_hcd), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Human Centric Digitalisation") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggsave(filename = file.path(outputfolder, "map8.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+
+ggplot() +
+  geom_sf(data = merge_avgscores, aes(fill = average_dg), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Data Management") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggsave(filename = file.path(outputfolder, "map9.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+ggplot() +
+  geom_sf(data = merge_avgscores, aes(fill = average_aai), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Automation & Intelligence") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggsave(filename = file.path(outputfolder, "map10.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+ggplot() +
+  geom_sf(data = merge_avgscores, aes(fill = average_gd), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Green Digitalisation") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggsave(filename = file.path(outputfolder, "map11.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+# and then by nuts0
+
+ggplot() +
+  geom_sf(data = merge1_avgscores, aes(fill = average_dbs), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Dig. Business Strategy") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggsave(filename = file.path(outputfolder, "map12.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+ggplot() +
+  geom_sf(data = merge1_avgscores, aes(fill = average_dr), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Digital Readiness") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggsave(filename = file.path(outputfolder, "map13.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+ggplot() +
+  geom_sf(data = merge1_avgscores, aes(fill = average_hcd), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Human Centric Digitalisation") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggsave(filename = file.path(outputfolder, "map14.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+ggplot() +
+  geom_sf(data = merge1_avgscores, aes(fill = average_dg), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Data Management") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggsave(filename = file.path(outputfolder, "map15.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+ggplot() +
+  geom_sf(data = merge1_avgscores, aes(fill = average_aai), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Automation & Intelligence") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggsave(filename = file.path(outputfolder, "map16.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+ggplot() +
+  geom_sf(data = merge1_avgscores, aes(fill = average_gd), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Green Digitalisation") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+ggsave(filename = file.path(outputfolder, "map17.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+# try withou the baltics
+
+merged_data_nobaltics <- merged_data[!(merged_data$CNTR_CODE %in% c("EE", "LT", "LV")) ,]
+
+
+
+ggplot() +
+  geom_sf(data = merged_data_nobaltics, aes(fill = Var1), color = "black", size = 0.2) +
+  scale_fill_gradient(
+    low = "lightblue", 
+    high = "darkblue",
+    na.value = "#d9dbdb", 
+    name = "Nr. of obs.",
+    breaks = seq(0, max(merged_data$Var1, na.rm = TRUE), by = 10)  # Set breaks at every 50
+  ) +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+merged_data0_nobaltics <- merged_data0[!(merged_data0$CNTR_CODE %in% c("EE", "LT", "LV")) ,]
+
+
+
+ggplot() +
+  geom_sf(data = merged_data0_nobaltics, aes(fill = Var1), color = "black", size = 0.2) +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", name = "Nr. of obs.") +
+  theme_minimal() +
+  theme(panel.grid = element_blank()) +
+  coord_sf(datum = NA)
+
+
+
+
+edihdatasummary = data.frame(table(data2$edih_name))
+hist(edihdatasummary$Freq, breaks = seq(0, 500, 1))
+abline(v = mean(edihdatasummary$Freq), col = "red")
+abline(v = median(edihdatasummary$Freq), col = "blue")
+mean(edihdatasummary$Freq)
+median(edihdatasummary$Freq)
+
+edihdata = data.frame(table(data2$edih_name, data2$region, data2$region_code))
+edihdata = edihdata[edihdata$Freq!=0,]
+
+summed_edihdata <- edihdata %>%
+  group_by(Var1) %>%
+  summarise(Sum_Freq = sum(Freq))
+
+threshold <- 15
+
+# Filter data based on the threshold
+filt_summed_edihdata <- summed_edihdata[summed_edihdata$Sum_Freq >= threshold, ]
+
+
+bar_chart <- ggplot(filt_summed_edihdata, aes(x = reorder(Var1, -Sum_Freq), y = Sum_Freq)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  # geom_text(aes(label = Freq), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Nr of firms per EDIH", x = "", y = "Frequency") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+
+threshold <- 100
+
+# Filter data based on the threshold
+filt_summed_edihdata <- summed_edihdata[summed_edihdata$Sum_Freq >= threshold, ]
+
+
+bar_chart <- ggplot(filt_summed_edihdata, aes(x = reorder(Var1, -Sum_Freq), y = Sum_Freq)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  # geom_text(aes(label = Freq), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Nr of firms per EDIH", x = "", y = "Frequency") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+threshold <- 75
+
+# Filter data based on the threshold
+filt_summed_edihdata <- summed_edihdata[summed_edihdata$Sum_Freq >= threshold, ]
+
+
+bar_chart <- ggplot(filt_summed_edihdata, aes(x = reorder(Var1, -Sum_Freq), y = Sum_Freq)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  # geom_text(aes(label = Freq), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Nr of firms per EDIH", x = "", y = "Frequency") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+
+# # library
+# library(tidyverse)
+# library(geojsonio)
+# library(RColorBrewer)
+# library(rgdal)
+# 
+# 
+# 
+# 
+# 
+# library(sf)
+# library(dplyr)
+# 
+# geojson_file <- "NUTS_RG_20M_2021_3035.geojson"
+# geo_data <- st_read(geojson_file)
+# 
+# filtered_data <- geo_data %>%
+#   filter(LEVL_CODE == 2)
+# 
+# st_write(filtered_data, "filtered_file.geojson", driver = "GeoJSON")
+# 
+# 
+# geojson_file <- "map.geojson"
+# geo_data <- st_read(geojson_file)
+# 
+# filtered_data <- geo_data %>%
+#   filter(LEVL_CODE == "2" & !(CNTR_CODE %in% exclude_codes ))
+# 
+# st_write(filtered_data, "filtered_filefin.geojson", driver = "GeoJSON")
+# 
+# 
+# library(clhex)
+# 
+# # Create hexjson with the default layout
+# hexjson <- create_hexjson(filtered_data)
+# 
+# # Create hexjson with the specified layout
+# hexjsonq <- create_hexjson(filtered_data, "odd-q")
+# 
+# create_and_save_hexjson(filtered_data, "output.hexjson")
+
+library(openxlsx)
+
+
+export_avgscores = data.frame(avgscores1)
+
+write.xlsx(export_avgscores, file = paste0(outputfolder,"/avgscorebycountry.xlsx"))
+
+export_avgscores_regional = data.frame(avgscores)
+
+write.xlsx(export_avgscores_regional, file = paste0(outputfolder,"/avgscorebyregion.xlsx"))
+
+# Remove the geometry column from data2
+data2 <- data2[, !names(data2) %in% "geometry"]
+
+
+write.xlsx(data2, file = paste0(outputfolder,"/clean-sme-scores.xlsx"))
+
+# Remove the geometry column from data
+data <- data[, !names(data) %in% "geometry"]
+
+
+write.xlsx(data, file = paste0(outputfolder,"/clean-raw-data-sme.xlsx"))
+
+
+# library(ggmap)
+# 
+# register_google("AIzaSyD49uZFYuem9zZJow-NywKF7hwD5M77r-M"  ,write = FALSE)
+# 
+# edihservices <- read_excel("clean-edih-services.xlsx")
+# 
+# # Example list of addresses
+# addresses <- edihservices$address
+# 
+# # Geocode the addresses to obtain spatial coordinates
+# coords <- geocode(addresses)
+# 
+# # View the spatial coordinates
+# print(coords)
+```
+
+
+
+
+```{r pointmaps, dev='svg', echo = FALSE, warning=FALSE, message=FALSE}
+# Download NUTS shapefile from Eurostat
+nuts_shapefile <- st_read(paste0(datafolder,"/NUTS_RG_20M_2021_3035.shp"))
+
+# Filter for nuts2
+nuts2_shapefile <- nuts_shapefile[nuts_shapefile$LEVL_CODE == "2", ]
+
+# Filter for nuts1
+nuts0_shapefile <- nuts_shapefile[nuts_shapefile$LEVL_CODE == "0", ]
+# Define the bounding box for the area you want to plot
+# Replace the values with the appropriate coordinates for your desired area
+bbox <- st_bbox(c(xmin = 1000000, xmax = 6500000,
+                  ymin = 100000, ymax = 5400000))
+
+
+# Crop the spatial data to the specified bounding box
+nuts0_shapefile <- st_crop(nuts0_shapefile, bbox)
+
+library(stringr)
+
+
+# Filter for NUTS2 regions
+# Define NUTS codes to exclude (e.g., Guyana and Turkey)
+exclude_codes <- c("FRY", "TR", "UK", "AL", "RS", "ME", "NO0B", "PT20", "MK", "CH")
+
+for(i in 1:length(exclude_codes)){
+  nuts2_shapefile <- nuts2_shapefile[!str_detect(nuts2_shapefile$NUTS_ID, exclude_codes[i]), ]
+}
+
+# Filter for NUTS0 regions
+# Define NUTS codes to exclude (e.g., Guyana and Turkey)
+exclude_codes <- c("TR", "UK", "AL", "RS", "ME", "MK", "CH")
+
+for(i in 1:length(exclude_codes)){
+  nuts0_shapefile <- nuts0_shapefile[!str_detect(nuts0_shapefile$NUTS_ID, exclude_codes[i]), ]
+}
+
+library(dplyr)
+
+# Convert the geocoded results to a data frame
+# Create a data frame directly from the geocoded results
+geocoded_df <- read_excel(paste0(datafolder,"/clean_geocoded_dma.xlsx"))
+
+geocoded_df_edihs <- read_excel(paste0(datafolder,"/clean_geocoded_edihs.xlsx"))
+
+# Filter out any rows with missing values in the geocoded data
+geocoded_df <- na.omit(geocoded_df)
+
+geocoded_df_edihs <- na.omit(geocoded_df_edihs)
+
+# Define latitude and longitude boundaries for continental Europe and the Canary Islands
+min_lat <- 27
+max_lat <- 71
+min_long <- -31
+max_long <- 33
+
+# Filter the dataframe based on the defined boundaries
+geocoded_df <- geocoded_df[geocoded_df$latitude >= min_lat & geocoded_df$latitude <= max_lat & geocoded_df$longitude >= min_long & geocoded_df$longitude <= max_long, ]
+
+# Filter the dataframe based on the defined boundaries
+geocoded_df_edihs <- geocoded_df_edihs[geocoded_df_edihs$latitude >= min_lat & geocoded_df_edihs$latitude <= max_lat & geocoded_df_edihs$longitude >= min_long & geocoded_df_edihs$longitude <= max_long, ]
+
+
+geocoded_sf <- st_as_sf(geocoded_df, coords = c("longitude", "latitude"), crs = st_crs("EPSG:4326"))
+
+# Transform the geocoded points to match the CRS of the shapefile
+geocoded_sf <- st_transform(geocoded_sf, crs = st_crs(nuts0_shapefile))
+
+geocoded_sf_edihs <- st_as_sf(geocoded_df_edihs, coords = c("longitude", "latitude"), crs = st_crs("EPSG:4326"))
+
+# Transform the geocoded points to match the CRS of the shapefile
+geocoded_sf_edihs <- st_transform(geocoded_sf_edihs, crs = st_crs(nuts0_shapefile))
+
+geocoded_within_bounds <- st_join(geocoded_sf, nuts0_shapefile)
+
+# Assuming you have already transformed the geocoded points and loaded the shapefile
+
+# Create the ggplot without axis labels
+p <- ggplot() +
+  geom_sf(data = nuts0_shapefile) +
+  geom_sf(data = geocoded_within_bounds, color = "red", size = 0.01) +
+  geom_sf(data = geocoded_sf_edihs, aes(color = type), size = 0.01) +  # Color by 'type'
+  scale_color_manual(values = c("Seal of Excellence" = "green", "EDIH" = "blue")) +  # Manual color scale
+  theme_minimal() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+
+
+# Print the ggplot
+print(p)
+
+# Create the ggplot without axis labels
+p <- ggplot() +
+  geom_sf(data = nuts2_shapefile) +
+  geom_sf(data = geocoded_within_bounds, color = "red", size = 0.01) +
+  geom_sf(data = geocoded_sf_edihs, aes(color = type), size = 0.01) +  # Color by 'type'
+  scale_color_manual(values = c("Seal of Excellence" = "green", "EDIH" = "blue")) +  # Manual color scale
+  theme_minimal() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_blank(),  # Remove x-axis text
+        axis.text.y = element_blank(),  # Remove y-axis text
+        axis.title.x = element_blank(),  # Remove x-axis title
+        axis.title.y = element_blank())  # Remove y-axis title
+
+# Print the ggplot
+print(p)
+
+
+include_codes <- c("IT")
+
+for(i in 1:length(include_codes)){
+  nuts0_shapefile_singlecountry <- nuts0_shapefile[str_detect(nuts0_shapefile$NUTS_ID, include_codes[i]), ]
+}
+
+include_codes_region <- c("ITH")
+
+for(i in 1:length(include_codes_region)){
+  nuts2_shapefile_singleregion <- nuts2_shapefile[str_detect(nuts2_shapefile$NUTS_ID, include_codes_region[i]), ]
+}
+
+# Create the ggplot without axis labels
+p <- ggplot() +
+  geom_sf(data = nuts0_shapefile_singlecountry) +
+  geom_sf(data = geocoded_within_bounds, color = "red", size = 0.1) +
+  geom_sf(data = geocoded_sf_edihs, aes(color = type), size = 0.01) +  # Color by 'type'
+  scale_color_manual(values = c("Seal of Excellence" = "green", "EDIH" = "blue")) +  # Manual color scale
+  theme_minimal() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_blank(),  # Remove x-axis text
+        axis.text.y = element_blank(),  # Remove y-axis text
+        axis.title.x = element_blank(),  # Remove x-axis title
+        axis.title.y = element_blank())  # Remove y-axis title
+
+# Print the ggplot
+print(p)
+
+# Perform a spatial join to keep only the points falling within the Italian border
+points_within_singlecountry <- st_intersection(geocoded_sf, nuts0_shapefile_singlecountry, join = st_within)
+points_within_singlecountry_edihs <- st_intersection(geocoded_sf_edihs, nuts0_shapefile_singlecountry, join = st_within)
+
+
+
+# Create the ggplot without axis labels
+p <- ggplot() +
+  geom_sf(data = nuts0_shapefile_singlecountry) +
+  geom_sf(data = points_within_singlecountry, color = "red", size = 0.5) +
+  geom_sf(data = points_within_singlecountry_edihs, aes(color = type), size = 0.5) +  # Color by 'type'
+  scale_color_manual(values = c("Seal of Excellence" = "green", "EDIH" = "blue")) +  # Manual color scale
+  theme_minimal() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_blank(),  # Remove x-axis text
+        axis.text.y = element_blank(),  # Remove y-axis text
+        axis.title.x = element_blank(),  # Remove x-axis title
+        axis.title.y = element_blank())  # Remove y-axis title
+
+# Print the ggplot
+print(p)
+
+
+
+# Perform a spatial join to keep only the points falling within the Italian border
+points_within_singleregion <- st_intersection(geocoded_sf, nuts2_shapefile_singleregion, join = st_within)
+points_within_singleregion_edihs <- st_intersection(geocoded_sf_edihs, nuts2_shapefile_singleregion, join = st_within)
+
+
+
+# Create the ggplot without axis labels
+p <- ggplot() +
+  geom_sf(data = nuts2_shapefile_singleregion) +
+  geom_sf(data = points_within_singleregion, color = "red", size = 0.5) +
+  geom_sf(data = points_within_singleregion_edihs, aes(color = type), size = 0.5) +  # Color by 'type'
+  scale_color_manual(values = c("Seal of Excellence" = "green", "EDIH" = "blue")) +  # Manual color scale
+  theme_minimal() +
+  theme(panel.grid = element_blank(),
+        axis.text.x = element_blank(),  # Remove x-axis text
+        axis.text.y = element_blank(),  # Remove y-axis text
+        axis.title.x = element_blank(),  # Remove x-axis title
+        axis.title.y = element_blank())  # Remove y-axis title
+
+# Print the ggplot
+print(p)
+
+
+
+
+```
+
+
+
+
+```{r additional-analysis,dev='svg', echo = FALSE, warning=FALSE, message=FALSE}
+
+library(dplyr)
+library(ggplot2)
+
+# First, modify the 'size' column by merging the two categories into one
+data2_modified <- data2 %>%
+  mutate(size = case_when(
+    size %in% c("Small mid-cap (250-499 employees)", "Mid-cap (500-2999 employees)") ~ "(more than 250 employees)",
+    TRUE ~ as.character(size)
+  ))
+
+# Now summarize the data, including the new merged category
+datasummary <- data2_modified %>%
+  group_by(size) %>%
+  filter(size != "Large company (> 3000 employees)") %>%
+  summarize(dma_score = mean(dma_score, na.rm = TRUE), .groups = 'drop')
+
+# Bar chart with vertical x-axis labels
+bar_chart <- ggplot(datasummary, aes(x = reorder(size, -dma_score), y = dma_score)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(title = "Average DMA score by size", x = "", y = "Score") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) # Rotate x-axis labels vertically
+
+print(bar_chart)
+
+
+
+#same for aai score
+datasummary <- data2 %>%
+    group_by(size) %>%
+    filter(size!="Large company (> 3000 employees)") %>%
+    summarize(aai_score = mean(automation_ai))
+
+bar_chart <- ggplot(datasummary, aes(x = reorder(size, -aai_score), y = aai_score)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  # geom_text(aes(label = Freq), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Average Automation & AI score by size", x = "", y = "Score") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.5))  # Rotate x-axis labels
+
+print(bar_chart)
+
+
+
+# by country
+
+datasummary <- data2 %>%
+    group_by(country) %>%
+    summarize(dmascore = mean(dma_score))
+
+bar_chart <- ggplot(datasummary, aes(x = reorder(country, -dmascore), y = dmascore)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  # geom_text(aes(label = Freq), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Average DMA score per country", x = "", y = "Score") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+
+#same for aai score
+datasummary <- data2 %>%
+    group_by(country) %>%
+    summarize(aai_score = mean(automation_ai))
+
+bar_chart <- ggplot(datasummary, aes(x = reorder(country, -aai_score), y = aai_score)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  # geom_text(aes(label = Freq), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Average aai score per country", x = "", y = "Score") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels
+
+print(bar_chart)
+
+
+# Define custom color palettes for each histogram
+color_palette_1 <- c("#4682B4", "#87CEFA")  # Blue tones for Medium-size
+color_palette_2 <- c("#FF4500", "#FF6347")  # Red tones for Micro-size
+color_palette_3 <- c("#008000", "#98FB98")  # Green tones for Mid-cap
+color_palette_4 <- c("#CD5C5C", "#FFA07A")  # Light red tones for Small-size
+color_palette_5 <- c("#FF8C00", "#FFD700")  # Gold and dark orange tones for Small mid-cap
+
+# Histograms for different company sizes with custom colors
+hist(data2$automation_ai[data2$size=="Medium-size (50-249)"], 
+     main = "Automation & Intelligence (50-249 empl)",
+     xlab = "", col = color_palette_1[1],
+     border = color_palette_1[2]
+)
+
+hist(data2$automation_ai[data2$size=="Micro-size (1-9)"], 
+     main = "Automation & Intelligence (1-9 empl)",
+     xlab = "", col = color_palette_2[1],
+     border = color_palette_2[2]
+)
+
+hist(data2$automation_ai[data2$size=="Mid-cap (500-2999 employees)"], 
+     main = "Automation & Intelligence (500-2999 empl)",
+     xlab = "", col = color_palette_3[1],
+     border = color_palette_3[2], breaks = seq(0,100,10)
+)
+
+hist(data2$automation_ai[data2$size=="Small-size (10-49)"], 
+     main = "Automation & Intelligence (10-49 empl)",
+     xlab = "", col = color_palette_4[1],
+     border = color_palette_4[2]
+)
+
+hist(data2$automation_ai[data2$size=="Small mid-cap (250-499 employees)"], 
+     main = "Automation & Intelligence (250-499 empl)",
+     xlab = "", col = color_palette_5[1],
+     border = color_palette_5[2]
+)
+
+
+hist(datamerge$q91, 
+     main = "NLP Adoption",
+     xlab = "", col = "blue",
+     breaks = c(0,0.2,0.4,0.6,0.8,1),
+     probability = TRUE
+)
+
+hist(datamerge$q92, 
+     main = "Computer Vision / Image Recognition",
+     xlab = "", col = "blue",
+     breaks = c(0,0.2,0.4,0.6,0.8,1),
+     probability = TRUE
+)
+
+hist(datamerge$q93, 
+     main = "Audio Processing / Speech Recognition",
+     xlab = "", col = "blue",
+     breaks = c(0,0.2,0.4,0.6,0.8,1),
+     probability = TRUE
+)
+
+hist(datamerge$q94, 
+     main = "Robotics and Autonomous Devices",
+     xlab = "", col = "blue",
+     breaks = c(0,0.2,0.4,0.6,0.8,1),
+     probability = TRUE
+)
+
+hist(datamerge$q94[datamerge$sector=="Manufacturing and processing"], 
+     main = "Robotics and Autonomous Devices in the Manufacturing Sector",
+     xlab = "", col = "blue",
+     breaks = c(0,0.2,0.4,0.6,0.8,1),
+     probability = TRUE
+)
+
+hist(datamerge$q94[datamerge$sector=="Automotive"], 
+     main = "Robotics and Autonomous Devices in the Automotive Sector",
+     xlab = "", col = "blue",
+     breaks = c(0,0.2,0.4,0.6,0.8,1),
+     probability = TRUE
+)
+
+hist(datamerge$q94[datamerge$sector=="Agricultural biotechnology and food biotechnology"], 
+     main = "Robotics and Autonomous Devices in the Automotive Sector",
+     xlab = "", col = "blue",
+     breaks = c(0,0.2,0.4,0.6,0.8,1),
+     probability = TRUE
+)
+
+hist(datamerge$q94[datamerge$sector=="Retail, wholesale or distribution"], 
+     main = "Robotics and Autonomous Devices in the Automotive Sector",
+     xlab = "", col = "blue",
+     breaks = c(0,0.2,0.4,0.6,0.8,1),
+     probability = TRUE
+)
+
+hist(datamerge$q95, 
+     main = "Business Intelligence, Data Analytics etc.",
+     xlab = "", col = "blue",
+     breaks = c(0,0.2,0.4,0.6,0.8,1),
+     probability = TRUE
+)
+
+
+library(corrplot)
+
+start <- which(names(datamerge) == "q91")
+finish <- which(names(datamerge) == "q95")
+sequence = seq(start,finish,1)
+realizationlist = c("Not Used",
+                    "Consider to use",
+                    "Prototyping",
+                    "Testing",
+                    "Implementing",
+                    "Operational")
+questionlist = c("NLP",
+                    "Computer Vision etc.",
+                    "Audio Recognition etc.",
+                    "Robotics and Automation",
+                    "Business intelligence etc.")
+
+
+probmatrix = matrix(NA,  length(realizationlist), length(sequence))
+rownames(probmatrix) = realizationlist
+colnames(probmatrix) = questionlist
+
+for (i in start : finish){
+  for (j in 1:6){
+    probmatrix[j,which(sequence==i)] = table(datamerge[,i])[j]/sum(table(datamerge[,i]))
+  }
+}
+
+custom_palette <- colorRampPalette(c("lightblue", "lightcoral"))(200)
+
+corrplot(probmatrix, method = "number", is.corr=FALSE, col.lim=c(0,1), col = custom_palette)
+
+
+datamergefilt <- datamerge %>%
+    filter(sector == "Manufacturing and processing")
+
+probmatrixfilt = matrix(NA,  length(realizationlist), length(sequence))
+rownames(probmatrixfilt) = realizationlist
+colnames(probmatrixfilt) = questionlist
+
+for (i in start : finish){
+  for (j in 1:6){
+    probmatrixfilt[j,which(sequence==i)] = table(datamergefilt[,i])[j]/sum(table(datamergefilt[,i]))
+  }
+}
+
+custom_palette <- colorRampPalette(c("lightblue", "lightcoral"))(200)
+
+corrplot(probmatrixfilt, method = "number", is.corr=FALSE, col.lim=c(0,1), col = custom_palette)
+```
+
+
+
+```{r additional-analysis2, fig.height=5, fig.width=12, dev='svg', echo = FALSE, warning=FALSE, message=FALSE}
+# Assuming `probmatrix` is your matrix object
+# Load the required packages
+library(ggplot2)
+library(reshape2)
+
+# Transpose and order the matrix by the first row in descending order
+transposed_probmatrix <- t(probmatrix)
+ordered_transposed_probmatrix  <- transposed_probmatrix[order(-transposed_probmatrix[, 1]), ]
+probmatrix <- t(ordered_transposed_probmatrix)
+
+
+
+# Convert the matrix to a datamod frame, preserving row names as a separate column
+datamod <- as.data.frame(probmatrix)
+datamod$Subpopulation <- rownames(probmatrix) # Add the row names as a new column
+
+# Convert 'Subpopulation' to a factor with levels in the order you want
+ordered_subpopulations <- c("Not Used", "Consider to use", "Prototyping", "Testing", "Implementing", "Operational")
+datamod$Subpopulation <- factor(datamod$Subpopulation, levels = ordered_subpopulations)
+
+# Melt the datamod frame into long format with the added Subpopulation column
+datamod_long <- melt(datamod, id.vars = "Subpopulation")
+
+# Define a color palette for the subpopulations with distinguishable shades
+color_palette <- setNames(c("#800000", "#E9967A", "#FFD700", "#32CD32", "#008000", "#006400"), ordered_subpopulations)
+
+# Create the horizontal stacked bar chart with ggplot2
+ggplot(datamod_long, aes(x = variable, y = value, fill = Subpopulation)) +
+  geom_bar(stat = "identity", position = position_fill(reverse = TRUE)) + # Reverse stack order
+  scale_fill_manual(values = color_palette) + # Use the custom color palette
+  coord_flip() + # Flip the bars to be horizontal
+  theme_minimal() + # Use a minimal theme
+  labs(y = "", x = "", fill = "") + # Add labels
+  geom_text(aes(label = ifelse(value > 0.05, paste0(as.character(round(value * 100)),"%"), "")),
+            position = position_fill(reverse = TRUE),
+            color = "white", size = 5, angle = 0, hjust = 1.25, vjust = 0.5, fontface = "bold") +
+  theme(axis.text.y = element_text(size = 12, color = "black", face = "bold"))
+
+
+ggsave(filename = file.path(outputfolder, "q9.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+##############################################################
+### HERE LIE ALL THE OTHER QUESTIONS, FROM Q1 TO THE LAST ####
+##############################################################
+
+start <- which(names(datamerge) == "q11ai")
+finish <- which(names(datamerge) == "q110pi")
+sequence = seq(start,finish,1)
+realizationlist = c("No",
+                    "Yes")
+questionlist = c("Product/Service design (A.I.)",
+                 "Product/Service design (P.I.)",
+                 "Project planning & management (A.I.)",
+                 "Project planning & management (P.I.)",
+                 "Operations (A.I.)",
+                 "Operations (P.I.)",
+                 "Internal & external collaborations (A.I.)",
+                 "Internal & external collaborations (P.I.)",
+                 "Inbound logistics & warehousing (A.I.)",
+                 "Inbound logistics & warehousing (P.I.)",
+                 "Marketing, sales & customer service (A.I.)",
+                 "Marketing, sales & customer service (P.I.)",
+                 "Delivery (outbound logistics, eInvoices) (A.I.)",
+                 "Delivery (outbound logistics, eInvoices) (P.I.)",
+                 "Administration & HR (A.I.)",
+                 "Administration & HR (P.I.)",
+                 "Purchasing & procurement (A.I.)",
+                 "Purchasing & procurement (P.I.)",
+                 "Cybersecurity & GDPR compliance (A.I.)",
+                 "Cybersecurity & GDPR compliance (P.I.)")
+
+
+probmatrix = matrix(NA,  length(realizationlist), length(sequence))
+rownames(probmatrix) = realizationlist
+colnames(probmatrix) = questionlist
+
+for (i in start : finish){
+  for (j in 1:2){
+    probmatrix[j,which(sequence==i)] = table(datamerge[,i])[j]/sum(table(datamerge[,i]))
+  }
+}
+
+
+
+# Assuming `probmatrix` is your matrix object
+# Load the required packages
+library(ggplot2)
+library(reshape2)
+
+# Transpose and order the matrix by the first row in descending order
+# transposed_probmatrix <- t(probmatrix)
+# ordered_transposed_probmatrix  <- transposed_probmatrix[order(-transposed_probmatrix[, 1]), ]
+# probmatrix <- t(ordered_transposed_probmatrix)
+
+# Convert the matrix to a datamod frame, preserving row names as a separate column
+datamod <- as.data.frame(probmatrix)
+datamod$Subpopulation <- rownames(probmatrix) # Add the row names as a new column
+
+# Convert 'Subpopulation' to a factor with levels in the order you want
+ordered_subpopulations <- c("No", "Yes")
+datamod$Subpopulation <- factor(datamod$Subpopulation, levels = ordered_subpopulations)
+
+# Melt the datamod frame into long format with the added Subpopulation column
+datamod_long <- melt(datamod, id.vars = "Subpopulation")
+
+# Define a color palette for the subpopulations with distinguishable shades
+color_palette <- setNames(c("#800000", "#006400"), ordered_subpopulations)
+
+# Create the horizontal stacked bar chart with ggplot2
+ggplot(datamod_long, aes(x = variable, y = value, fill = Subpopulation)) +
+  geom_bar(stat = "identity", position = position_fill(reverse = TRUE)) +
+  scale_fill_manual(values = color_palette) +
+  coord_flip() +
+  theme_minimal() +
+  labs(y = "", x = "", fill = "") +
+  geom_text(aes(label = ifelse(value > 0.05, paste0(as.character(round(value * 100)),"%"), "")),
+            position = position_fill(reverse = TRUE),
+            color = "white", size = 5, angle = 0, hjust = 1.25, vjust = 0.5, fontface = "bold") +
+  theme(axis.text.y = element_text(size = 12, color = "black", face = "bold")) # Modify y-axis text size and color
+
+ggsave(filename = file.path(outputfolder, "q1.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+
+#########################################################################
+# q1, BUT WITH COLLAPSED OPTIONS
+#########################################################################
+
+datacollapsed <- datamerge[7:26]
+
+# in this case, 0 means not ai and not plan, 1 means not ai and plan, 2 means ai and not plan and 3 means ai and plan
+
+start <- which(names(datacollapsed) == "q11ai")
+finish <- which(names(datacollapsed) == "q110ai")
+for(i in seq(from=start, to=finish)){
+  datacollapsed[,i] = ifelse((datacollapsed[,i] == 0 & datacollapsed[,i+1] == 0), 0,
+                    ifelse((datacollapsed[,i] == 0 & datacollapsed[,i+1] == 1), 1, 
+                           ifelse((datacollapsed[,i] == 1 & datacollapsed[,i+1] == 0), 2, 
+                                  ifelse((datacollapsed[,i] == 1 & datacollapsed[,i+1] == 1), 3, NA))))
+}
+coldelete = seq(from = start + 1, to = finish, by=2)
+datacollapsed = datacollapsed[, -c(coldelete)]
+varnames = names(datacollapsed)
+
+
+
+
+
+
+start <- which(names(datacollapsed) == "q11ai")
+finish <- which(names(datacollapsed) == "q110ai")
+sequence = seq(start,finish,1)
+realizationlist = c("Not already invested and no plan to invest",
+                    "Not already invested but plans to invest",
+                    "Already invested with no plans to invest more",
+                    "Already invested with plans to invest more")
+questionlist = c("Product/Service design",
+                 
+                 "Project planning & management",
+                 
+                 "Operations",
+                
+                 "Internal & external collaborations",
+                 
+                 "Inbound logistics & warehousing",
+                 
+                 "Marketing, sales & customer service",
+                 
+                 "Delivery (outbound logistics, eInvoices)",
+                 
+                 "Administration & HR",
+                 
+                 "Purchasing & procurement",
+                 
+                 "Cybersecurity & GDPR compliance")
+                 
+
+
+probmatrix = matrix(NA,  length(realizationlist), length(sequence))
+rownames(probmatrix) = realizationlist
+colnames(probmatrix) = questionlist
+
+for (i in start : finish){
+  for (j in 1:4){
+    probmatrix[j,which(sequence==i)] = table(datacollapsed[,i])[j]/sum(table(datacollapsed[,i]))
+  }
+}
+
+
+
+# Assuming `probmatrix` is your matrix object
+# Load the required packages
+library(ggplot2)
+library(reshape2)
+
+# Transpose and order the matrix by the first row in descending order
+transposed_probmatrix <- t(probmatrix)
+ordered_transposed_probmatrix  <- transposed_probmatrix[order(-transposed_probmatrix[, 1]), ]
+probmatrix <- t(ordered_transposed_probmatrix)
+
+# Convert the matrix to a datamod frame, preserving row names as a separate column
+datamod <- as.data.frame(probmatrix)
+datamod$Subpopulation <- rownames(probmatrix) # Add the row names as a new column
+
+# Convert 'Subpopulation' to a factor with levels in the order you want
+ordered_subpopulations <- c("Not already invested and no plan to invest",
+                    "Not already invested but plans to invest",
+                    "Already invested with no plans to invest more",
+                    "Already invested with plans to invest more")
+datamod$Subpopulation <- factor(datamod$Subpopulation, levels = ordered_subpopulations)
+
+# Melt the datamod frame into long format with the added Subpopulation column
+datamod_long <- melt(datamod, id.vars = "Subpopulation")
+
+# Define a color palette for the subpopulations with distinguishable shades
+color_palette <- setNames(c("#800000", "#E9967A", "#008000", "#006400"), ordered_subpopulations)
+
+# Create the horizontal stacked bar chart with ggplot2
+ggplot(datamod_long, aes(x = variable, y = value, fill = Subpopulation)) +
+  geom_bar(stat = "identity", position = position_fill(reverse = TRUE)) +
+  scale_fill_manual(values = color_palette) +
+  coord_flip() +
+  theme_minimal() +
+  labs(y = "", x = "", fill = "") +
+  geom_text(aes(label = ifelse(value > 0.05, paste0(as.character(round(value * 100)),"%"), "")),
+            position = position_fill(reverse = TRUE),
+            color = "white", size = 5, angle = 0, hjust = 1.25, vjust = 0.5, fontface = "bold") +
+  theme(axis.text.y = element_text(size = 12, color = "black", face = "bold")) # Modify y-axis text size and color
+
+
+
+ggsave(filename = file.path(outputfolder, "q1collapsed.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+
+#########################################################################
+# q2
+#########################################################################
+
+
+start <- which(names(datamerge) == "q21")
+finish <- which(names(datamerge) == "q210")
+sequence = seq(start,finish,1)
+realizationlist = c("No",
+                    "Yes")
+questionlist = c("Dig. needs identified & aligned with business obj.",
+                 "Fin. resources identified for >1 year",
+                 "IT Infr. ready to support digitalisation plan",
+                 "ICT specialist employed/sub-contracted",
+                 "Management ready for necessary org. changes",
+                 "Departments & staff ready to support digit.",
+                 "Business architecture and processes can be adapted",
+                 "Products sold as services or supplemented by dig. techn. services",
+                 "Customer satisfaction is monitored regularly",
+                 "Risks of digitalisation are considered")
+
+
+probmatrix = matrix(NA,  length(realizationlist), length(sequence))
+rownames(probmatrix) = realizationlist
+colnames(probmatrix) = questionlist
+
+for (i in start : finish){
+  for (j in 1:2){
+    probmatrix[j,which(sequence==i)] = table(datamerge[,i])[j]/sum(table(datamerge[,i]))
+  }
+}
+
+
+
+# Assuming `probmatrix` is your matrix object
+# Load the required packages
+library(ggplot2)
+library(reshape2)
+
+# Transpose and order the matrix by the first row in descending order
+transposed_probmatrix <- t(probmatrix)
+ordered_transposed_probmatrix  <- transposed_probmatrix[order(-transposed_probmatrix[, 1]), ]
+probmatrix <- t(ordered_transposed_probmatrix)
+
+# Convert the matrix to a datamod frame, preserving row names as a separate column
+datamod <- as.data.frame(probmatrix)
+datamod$Subpopulation <- rownames(probmatrix) # Add the row names as a new column
+
+# Convert 'Subpopulation' to a factor with levels in the order you want
+ordered_subpopulations <- c("No", "Yes")
+datamod$Subpopulation <- factor(datamod$Subpopulation, levels = ordered_subpopulations)
+
+# Melt the datamod frame into long format with the added Subpopulation column
+datamod_long <- melt(datamod, id.vars = "Subpopulation")
+
+# Define a color palette for the subpopulations with distinguishable shades
+color_palette <- setNames(c("#800000", "#006400"), ordered_subpopulations)
+
+# Create the horizontal stacked bar chart with ggplot2
+ggplot(datamod_long, aes(x = variable, y = value, fill = Subpopulation)) +
+  geom_bar(stat = "identity", position = position_fill(reverse = TRUE)) +
+  scale_fill_manual(values = color_palette) +
+  coord_flip() +
+  theme_minimal() +
+  labs(y = "", x = "", fill = "") +
+  geom_text(aes(label = ifelse(value > 0.05, paste0(as.character(round(value * 100)),"%"), "")),
+            position = position_fill(reverse = TRUE),
+            color = "white", size = 5, angle = 0, hjust = 1.25, vjust = 0.5, fontface = "bold") +
+  theme(axis.text.y = element_text(size = 12, color = "black", face = "bold")) # Modify y-axis text size and color
+
+ggsave(filename = file.path(outputfolder, "q2.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+
+#########################################################################
+# q5
+#########################################################################
+
+
+start <- which(names(datamerge) == "q51")
+finish <- which(names(datamerge) == "q57")
+sequence = seq(start,finish,1)
+realizationlist = c("No",
+                    "Yes")
+questionlist = c("Perform skill assessment to identify skills gap",
+                 "Design plan to train and up-skill staff",
+                 "Organise training, tutorials & e-learning",
+                 "Facilitate learning-by-doing/peer learning",
+                 "Offer traineeships/job placements in key areas",
+                 "Sponsor staff participation in external training",
+                 "Use subsidized training & upskilling programme")
+
+
+probmatrix = matrix(NA,  length(realizationlist), length(sequence))
+rownames(probmatrix) = realizationlist
+colnames(probmatrix) = questionlist
+
+for (i in start : finish){
+  for (j in 1:2){
+    probmatrix[j,which(sequence==i)] = table(datamerge[,i])[j]/sum(table(datamerge[,i]))
+  }
+}
+
+
+
+# Assuming `probmatrix` is your matrix object
+# Load the required packages
+library(ggplot2)
+library(reshape2)
+
+# Transpose and order the matrix by the first row in descending order
+transposed_probmatrix <- t(probmatrix)
+ordered_transposed_probmatrix  <- transposed_probmatrix[order(-transposed_probmatrix[, 1]), ]
+probmatrix <- t(ordered_transposed_probmatrix)
+
+# Convert the matrix to a datamod frame, preserving row names as a separate column
+datamod <- as.data.frame(probmatrix)
+datamod$Subpopulation <- rownames(probmatrix) # Add the row names as a new column
+
+# Convert 'Subpopulation' to a factor with levels in the order you want
+ordered_subpopulations <- c("No", "Yes")
+datamod$Subpopulation <- factor(datamod$Subpopulation, levels = ordered_subpopulations)
+
+# Melt the datamod frame into long format with the added Subpopulation column
+datamod_long <- melt(datamod, id.vars = "Subpopulation")
+
+# Define a color palette for the subpopulations with distinguishable shades
+color_palette <- setNames(c("#800000", "#006400"), ordered_subpopulations)
+
+# Create the horizontal stacked bar chart with ggplot2
+ggplot(datamod_long, aes(x = variable, y = value, fill = Subpopulation)) +
+  geom_bar(stat = "identity", position = position_fill(reverse = TRUE)) +
+  scale_fill_manual(values = color_palette) +
+  coord_flip() +
+  theme_minimal() +
+  labs(y = "", x = "", fill = "") +
+  geom_text(aes(label = ifelse(value > 0.05, paste0(as.character(round(value * 100)),"%"), "")),
+            position = position_fill(reverse = TRUE),
+            color = "white", size = 5, angle = 0, hjust = 1.25, vjust = 0.5, fontface = "bold") +
+  theme(axis.text.y = element_text(size = 12, color = "black", face = "bold")) # Modify y-axis text size and color
+
+ggsave(filename = file.path(outputfolder, "q5.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+
+#########################################################################
+# q6
+#########################################################################
+
+
+start <- which(names(datamerge) == "q61")
+finish <- which(names(datamerge) == "q68")
+sequence = seq(start,finish,1)
+realizationlist = c("No",
+                    "Yes")
+questionlist = c("Facilitate staff awareness of new dig. technologies",
+                 "Communicate dig. plan in trasp. & inclusive way",
+                 "Monitor staff acceptance to check collateral effects",
+                 "Involve staff in design & development of digitalisation",
+                 "Give staff more autonomy & digital tools for decisions",
+                 "Adapt jobs and workflows to support workers' needs",
+                 "Set up flexible working arrangements",
+                 "Put a digital support team at disposal")
+
+
+probmatrix = matrix(NA,  length(realizationlist), length(sequence))
+rownames(probmatrix) = realizationlist
+colnames(probmatrix) = questionlist
+
+for (i in start : finish){
+  for (j in 1:2){
+    probmatrix[j,which(sequence==i)] = table(datamerge[,i])[j]/sum(table(datamerge[,i]))
+  }
+}
+
+
+
+# Assuming `probmatrix` is your matrix object
+# Load the required packages
+library(ggplot2)
+library(reshape2)
+
+# Transpose and order the matrix by the first row in descending order
+transposed_probmatrix <- t(probmatrix)
+ordered_transposed_probmatrix  <- transposed_probmatrix[order(-transposed_probmatrix[, 1]), ]
+probmatrix <- t(ordered_transposed_probmatrix)
+
+# Convert the matrix to a datamod frame, preserving row names as a separate column
+datamod <- as.data.frame(probmatrix)
+datamod$Subpopulation <- rownames(probmatrix) # Add the row names as a new column
+
+# Convert 'Subpopulation' to a factor with levels in the order you want
+ordered_subpopulations <- c("No", "Yes")
+datamod$Subpopulation <- factor(datamod$Subpopulation, levels = ordered_subpopulations)
+
+# Melt the datamod frame into long format with the added Subpopulation column
+datamod_long <- melt(datamod, id.vars = "Subpopulation")
+
+# Define a color palette for the subpopulations with distinguishable shades
+color_palette <- setNames(c("#800000", "#006400"), ordered_subpopulations)
+
+# Create the horizontal stacked bar chart with ggplot2
+ggplot(datamod_long, aes(x = variable, y = value, fill = Subpopulation)) +
+  geom_bar(stat = "identity", position = position_fill(reverse = TRUE)) +
+  scale_fill_manual(values = color_palette) +
+  coord_flip() +
+  theme_minimal() +
+  labs(y = "", x = "", fill = "") +
+  geom_text(aes(label = ifelse(value > 0.05, paste0(as.character(round(value * 100)),"%"), "")),
+            position = position_fill(reverse = TRUE),
+            color = "white", size = 5, angle = 0, hjust = 1.25, vjust = 0.5, fontface = "bold") +
+  theme(axis.text.y = element_text(size = 12, color = "black", face = "bold")) # Modify y-axis text size and color
+
+ggsave(filename = file.path(outputfolder, "q6.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+
+#########################################################################
+# q7
+#########################################################################
+
+
+start <- which(names(datamerge) == "q71")
+finish <- which(names(datamerge) == "q78")
+sequence = seq(start,finish,1)
+realizationlist = c("No",
+                    "Yes")
+questionlist = c("The organisation has a data management policy",
+                 "Data is NOT collected digitally",
+                 "Relevant data is stored digitally",
+                 "Data is integrated even when using various systems",
+                 "Data is accessible from different devices & locations",
+                 "Data is systematically analysed and reported",
+                 "Data analytics are enriched with external sources",
+                 "Data analytics are accessible without expert assistance")
+
+
+probmatrix = matrix(NA,  length(realizationlist), length(sequence))
+rownames(probmatrix) = realizationlist
+colnames(probmatrix) = questionlist
+
+for (i in start : finish){
+  for (j in 1:2){
+    probmatrix[j,which(sequence==i)] = table(datamerge[,i])[j]/sum(table(datamerge[,i]))
+  }
+}
+
+
+
+# Assuming `probmatrix` is your matrix object
+# Load the required packages
+library(ggplot2)
+library(reshape2)
+
+# Transpose and order the matrix by the first row in descending order
+transposed_probmatrix <- t(probmatrix)
+ordered_transposed_probmatrix  <- transposed_probmatrix[order(-transposed_probmatrix[, 1]), ]
+probmatrix <- t(ordered_transposed_probmatrix)
+
+# Convert the matrix to a datamod frame, preserving row names as a separate column
+datamod <- as.data.frame(probmatrix)
+datamod$Subpopulation <- rownames(probmatrix) # Add the row names as a new column
+
+# Convert 'Subpopulation' to a factor with levels in the order you want
+ordered_subpopulations <- c("No", "Yes")
+datamod$Subpopulation <- factor(datamod$Subpopulation, levels = ordered_subpopulations)
+
+# Melt the datamod frame into long format with the added Subpopulation column
+datamod_long <- melt(datamod, id.vars = "Subpopulation")
+
+# Define a color palette for the subpopulations with distinguishable shades
+color_palette <- setNames(c("#800000", "#006400"), ordered_subpopulations)
+
+# Create the horizontal stacked bar chart with ggplot2
+ggplot(datamod_long, aes(x = variable, y = value, fill = Subpopulation)) +
+  geom_bar(stat = "identity", position = position_fill(reverse = TRUE)) +
+  scale_fill_manual(values = color_palette) +
+  coord_flip() +
+  theme_minimal() +
+  labs(y = "", x = "", fill = "") +
+  geom_text(aes(label = ifelse(value > 0.05, paste0(as.character(round(value * 100)),"%"), "")),
+            position = position_fill(reverse = TRUE),
+            color = "white", size = 5, angle = 0, hjust = 1.25, vjust = 0.5, fontface = "bold") +
+  theme(axis.text.y = element_text(size = 12, color = "black", face = "bold")) # Modify y-axis text size and color
+
+ggsave(filename = file.path(outputfolder, "q7.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+
+#########################################################################
+# q8
+#########################################################################
+
+
+start <- which(names(datamerge) == "q81")
+finish <- which(names(datamerge) == "q86")
+sequence = seq(start,finish,1)
+realizationlist = c("No",
+                    "Yes")
+questionlist = c("A data security policy is in place",
+                 "Client-related data is protected from cyberattacks",
+                 "Staff is trained on cybersecurity",
+                 "Cyber-threats are regularly monitored",
+                 "A full backup copy of critical data is maintained",
+                 "A business continuity plan is in place")
+
+
+probmatrix = matrix(NA,  length(realizationlist), length(sequence))
+rownames(probmatrix) = realizationlist
+colnames(probmatrix) = questionlist
+
+for (i in start : finish){
+  for (j in 1:2){
+    probmatrix[j,which(sequence==i)] = table(datamerge[,i])[j]/sum(table(datamerge[,i]))
+  }
+}
+
+
+
+# Assuming `probmatrix` is your matrix object
+# Load the required packages
+library(ggplot2)
+library(reshape2)
+
+# Transpose and order the matrix by the first row in descending order
+transposed_probmatrix <- t(probmatrix)
+ordered_transposed_probmatrix  <- transposed_probmatrix[order(-transposed_probmatrix[, 1]), ]
+probmatrix <- t(ordered_transposed_probmatrix)
+
+# Convert the matrix to a datamod frame, preserving row names as a separate column
+datamod <- as.data.frame(probmatrix)
+datamod$Subpopulation <- rownames(probmatrix) # Add the row names as a new column
+
+# Convert 'Subpopulation' to a factor with levels in the order you want
+ordered_subpopulations <- c("No", "Yes")
+datamod$Subpopulation <- factor(datamod$Subpopulation, levels = ordered_subpopulations)
+
+# Melt the datamod frame into long format with the added Subpopulation column
+datamod_long <- melt(datamod, id.vars = "Subpopulation")
+
+# Define a color palette for the subpopulations with distinguishable shades
+color_palette <- setNames(c("#800000", "#006400"), ordered_subpopulations)
+
+# Create the horizontal stacked bar chart with ggplot2
+ggplot(datamod_long, aes(x = variable, y = value, fill = Subpopulation)) +
+  geom_bar(stat = "identity", position = position_fill(reverse = TRUE)) +
+  scale_fill_manual(values = color_palette) +
+  coord_flip() +
+  theme_minimal() +
+  labs(y = "", x = "", fill = "") +
+  geom_text(aes(label = ifelse(value > 0.05, paste0(as.character(round(value * 100)),"%"), "")),
+            position = position_fill(reverse = TRUE),
+            color = "white", size = 5, angle = 0, hjust = 1.25, vjust = 0.5, fontface = "bold") +
+  theme(axis.text.y = element_text(size = 12, color = "black", face = "bold")) # Modify y-axis text size and color
+
+ggsave(filename = file.path(outputfolder, "q8.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+
+#########################################################################
+# q11
+#########################################################################
+
+
+start <- which(names(datamerge) == "q111")
+finish <- which(names(datamerge) == "q115")
+sequence = seq(start,finish,1)
+realizationlist = c("No",
+                    "Partially",
+                    "Yes")
+questionlist = c("Environmental concerns are included in business strategy",
+                 "An Environmental Management System is implemented",
+                 "Environmental aspects are part of dig. procurement criteria",
+                 "Energy consumption of dig. technologies is monitored & opt.",
+                 "Re-use of old technological equipment is in place")
+
+
+probmatrix = matrix(NA,  length(realizationlist), length(sequence))
+rownames(probmatrix) = realizationlist
+colnames(probmatrix) = questionlist
+
+for (i in start : finish){
+  for (j in 1:3){
+    probmatrix[j,which(sequence==i)] = table(datamerge[,i])[j]/sum(table(datamerge[,i]))
+  }
+}
+
+
+
+# Assuming `probmatrix` is your matrix object
+# Load the required packages
+library(ggplot2)
+library(reshape2)
+
+# Transpose and order the matrix by the first row in descending order
+transposed_probmatrix <- t(probmatrix)
+ordered_transposed_probmatrix  <- transposed_probmatrix[order(-transposed_probmatrix[, 1]), ]
+probmatrix <- t(ordered_transposed_probmatrix)
+
+# Convert the matrix to a datamod frame, preserving row names as a separate column
+datamod <- as.data.frame(probmatrix)
+datamod$Subpopulation <- rownames(probmatrix) # Add the row names as a new column
+
+# Convert 'Subpopulation' to a factor with levels in the order you want
+ordered_subpopulations <- c("No","Partially" ,"Yes")
+datamod$Subpopulation <- factor(datamod$Subpopulation, levels = ordered_subpopulations)
+
+# Melt the datamod frame into long format with the added Subpopulation column
+datamod_long <- melt(datamod, id.vars = "Subpopulation")
+
+# Define a color palette for the subpopulations with distinguishable shades
+color_palette <- setNames(c("#800000","#FFD700", "#006400"), ordered_subpopulations)
+
+# Create the horizontal stacked bar chart with ggplot2
+ggplot(datamod_long, aes(x = variable, y = value, fill = Subpopulation)) +
+  geom_bar(stat = "identity", position = position_fill(reverse = TRUE)) +
+  scale_fill_manual(values = color_palette) +
+  coord_flip() +
+  theme_minimal() +
+  labs(y = "", x = "", fill = "") +
+  geom_text(aes(label = ifelse(value > 0.05, paste0(as.character(round(value * 100)),"%"), "")),
+            position = position_fill(reverse = TRUE),
+            color = "white", size = 5, angle = 0, hjust = 1.25, vjust = 0.5, fontface = "bold") +
+  theme(axis.text.y = element_text(size = 12, color = "black", face = "bold")) # Modify y-axis text size and color
+
+ggsave(filename = file.path(outputfolder, "q11.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+
+#####################################################
+# NOW THE SAME, BUT FOR THE GREEN DIGITALISATION q10 PART
+######################################################
+
+start <- which(names(datamerge) == "q101")
+finish <- which(names(datamerge) == "q1010")
+sequence = seq(start,finish,1)
+realizationlist = c("No",
+                    "Yes")
+questionlist = c("Sustainable business model",
+                 "Sustainable service provision",
+                 "Sustainable products",
+                 "Sustainable production methods and materials",
+                 "Emissions or waste management",
+                 "Sustainable energy generation",
+                 "Optimisation of raw material consumption",
+                 "Reduction of transport and packaging",
+                 "Digital applications for responsible consumer behavior",
+                 "Paperless administrative processes")
+
+
+probmatrix = matrix(NA,  length(realizationlist), length(sequence))
+rownames(probmatrix) = realizationlist
+colnames(probmatrix) = questionlist
+
+for (i in start : finish){
+  for (j in 1:2){
+    probmatrix[j,which(sequence==i)] = table(datamerge[,i])[j]/sum(table(datamerge[,i]))
+  }
+}
+
+
+
+# Assuming `probmatrix` is your matrix object
+# Load the required packages
+library(ggplot2)
+library(reshape2)
+
+# Transpose and order the matrix by the first row in descending order
+transposed_probmatrix <- t(probmatrix)
+ordered_transposed_probmatrix  <- transposed_probmatrix[order(-transposed_probmatrix[, 1]), ]
+probmatrix <- t(ordered_transposed_probmatrix)
+
+# Convert the matrix to a datamod frame, preserving row names as a separate column
+datamod <- as.data.frame(probmatrix)
+datamod$Subpopulation <- rownames(probmatrix) # Add the row names as a new column
+
+# Convert 'Subpopulation' to a factor with levels in the order you want
+ordered_subpopulations <- c("No", "Yes")
+datamod$Subpopulation <- factor(datamod$Subpopulation, levels = ordered_subpopulations)
+
+# Melt the datamod frame into long format with the added Subpopulation column
+datamod_long <- melt(datamod, id.vars = "Subpopulation")
+
+# Define a color palette for the subpopulations with distinguishable shades
+color_palette <- setNames(c("#800000", "#006400"), ordered_subpopulations)
+
+# Create the horizontal stacked bar chart with ggplot2
+ggplot(datamod_long, aes(x = variable, y = value, fill = Subpopulation)) +
+  geom_bar(stat = "identity", position = position_fill(reverse = TRUE)) + # Reverse stack order
+  scale_fill_manual(values = color_palette) + # Use the custom color palette
+  coord_flip() + # Flip the bars to be horizontal
+  theme_minimal() + # Use a minimal theme
+  labs(y = "", x = "", fill = "") + # Add labels
+  geom_text(aes(label = ifelse(value > 0.05, paste0(as.character(round(value * 100)),"%"), "")),
+            position = position_fill(reverse = TRUE),
+            color = "white", size = 5, angle = 0, hjust = 1.25, vjust = 0.5, fontface = "bold")  +
+  theme(axis.text.y = element_text(size = 12, color = "black", face = "bold")) # Modify y-axis text size and color
+
+ggsave(filename = file.path(outputfolder, "q10.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+
+#####################################################
+# NOW THE SAME, BUT FOR THE q4 digital readiness
+######################################################
+
+start <- which(names(datamerge) == "q41")
+finish <- which(names(datamerge) == "q47")
+sequence = seq(start,finish,1)
+realizationlist = c("Not Used",
+                    "Consider to use",
+                    "Prototyping",
+                    "Testing",
+                    "Implementing",
+                    "Operational")
+questionlist = c("Simulation & Digital twins",
+                 "Virtual or augmented reality",
+                 "Computer Aided Design",
+                 "Manufacturing execution systems",
+                 "Internet of Things",
+                 "Blockchain",
+                 "Additive Manufacturing (or 3D printing)"
+                 )
+
+
+probmatrix = matrix(NA,  length(realizationlist), length(sequence))
+rownames(probmatrix) = realizationlist
+colnames(probmatrix) = questionlist
+
+for (i in start : finish){
+  for (j in 1:6){
+    probmatrix[j,which(sequence==i)] = table(datamerge[,i])[j]/sum(table(datamerge[,i]))
+  }
+}
+
+
+
+# Assuming `probmatrix` is your matrix object
+# Load the required packages
+library(ggplot2)
+library(reshape2)
+
+# Transpose and order the matrix by the first row in descending order
+transposed_probmatrix <- t(probmatrix)
+ordered_transposed_probmatrix  <- transposed_probmatrix[order(-transposed_probmatrix[, 1]), ]
+probmatrix <- t(ordered_transposed_probmatrix)
+
+
+# Convert the matrix to a datamod frame, preserving row names as a separate column
+datamod <- as.data.frame(probmatrix)
+datamod$Subpopulation <- rownames(probmatrix) # Add the row names as a new column
+
+# Convert 'Subpopulation' to a factor with levels in the order you want
+ordered_subpopulations <- c("Not Used", "Consider to use", "Prototyping", "Testing", "Implementing", "Operational")
+datamod$Subpopulation <- factor(datamod$Subpopulation, levels = ordered_subpopulations)
+
+# Melt the datamod frame into long format with the added Subpopulation column
+datamod_long <- melt(datamod, id.vars = "Subpopulation")
+
+# Define a color palette for the subpopulations with distinguishable shades
+color_palette <- setNames(c("#800000", "#E9967A", "#FFD700", "#32CD32", "#008000", "#006400"), ordered_subpopulations)
+
+# Create the horizontal stacked bar chart with ggplot2
+ggplot(datamod_long, aes(x = variable, y = value, fill = Subpopulation)) +
+  geom_bar(stat = "identity", position = position_fill(reverse = TRUE)) + # Reverse stack order
+  scale_fill_manual(values = color_palette) + # Use the custom color palette
+  coord_flip() + # Flip the bars to be horizontal
+  theme_minimal() + # Use a minimal theme
+  labs(y = "", x = "", fill = "") + # Add labels
+  geom_text(aes(label = ifelse(value > 0.05, paste0(as.character(round(value * 100)),"%"), "")),
+            position = position_fill(reverse = TRUE),
+            color = "white", size = 5, angle = 0, hjust = 1.25, vjust = 0.5, fontface = "bold")  +
+  theme(axis.text.y = element_text(size = 12, color = "black", face = "bold")) # Modify y-axis text size and color
+
+
+ggsave(filename = file.path(outputfolder, "q4.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+
+#####################################################
+# NOW THE SAME, BUT FOR THE q3 digital readiness
+######################################################
+
+start <- which(names(datamerge) == "q31")
+finish <- which(names(datamerge) == "q310")
+sequence = seq(start,finish,1)
+realizationlist = c("No",
+                    "Yes")
+questionlist = c("High-speed Connectivity",
+                 "Website",
+                 "Blogs or Forums with clients",
+                 "Live Chats and Chatbots with clients",
+                 "E-commerce",
+                 "E-marketing",
+                 "E-government",
+                 "Remote working",
+                 "Intranet",
+                 "Information Management Systems"
+                 )
+
+
+probmatrix = matrix(NA,  length(realizationlist), length(sequence))
+rownames(probmatrix) = realizationlist
+colnames(probmatrix) = questionlist
+
+for (i in start : finish){
+  for (j in 1:2){
+    probmatrix[j,which(sequence==i)] = table(datamerge[,i])[j]/sum(table(datamerge[,i]))
+  }
+}
+
+
+
+# Assuming `probmatrix` is your matrix object
+# Load the required packages
+library(ggplot2)
+library(reshape2)
+
+# Transpose and order the matrix by the first row in descending order
+transposed_probmatrix <- t(probmatrix)
+ordered_transposed_probmatrix  <- transposed_probmatrix[order(-transposed_probmatrix[, 1]), ]
+probmatrix <- t(ordered_transposed_probmatrix)
+
+
+# Convert the matrix to a datamod frame, preserving row names as a separate column
+datamod <- as.data.frame(probmatrix)
+datamod$Subpopulation <- rownames(probmatrix) # Add the row names as a new column
+
+# Convert 'Subpopulation' to a factor with levels in the order you want
+ordered_subpopulations <- c("No", "Yes")
+datamod$Subpopulation <- factor(datamod$Subpopulation, levels = ordered_subpopulations)
+
+# Melt the datamod frame into long format with the added Subpopulation column
+datamod_long <- melt(datamod, id.vars = "Subpopulation")
+
+# Define a color palette for the subpopulations with distinguishable shades
+color_palette <- setNames(c("#800000", "#006400"), ordered_subpopulations)
+
+# Create the horizontal stacked bar chart with ggplot2
+ggplot(datamod_long, aes(x = variable, y = value, fill = Subpopulation)) +
+  geom_bar(stat = "identity", position = position_fill(reverse = TRUE)) + # Reverse stack order
+  scale_fill_manual(values = color_palette) + # Use the custom color palette
+  coord_flip() + # Flip the bars to be horizontal
+  theme_minimal() + # Use a minimal theme
+  labs(y = "", x = "", fill = "") + # Add labels
+  geom_text(aes(label = ifelse(value > 0.05, paste0(as.character(round(value * 100)),"%"), "")),
+            position = position_fill(reverse = TRUE),
+            color = "white", size = 5, angle = 0, hjust = 1.25, vjust = 0.5, fontface = "bold")  +
+  theme(axis.text.y = element_text(size = 12, color = "black", face = "bold")) # Modify y-axis text size and color
+
+ggsave(filename = file.path(outputfolder, "q3.png"), plot = last_plot(), device = "png", width = 12, height = 5, bg = "white")
+
+
+```
+
+
+
+```{r additional-analysis2b, fig.height=24, fig.width=12, dev='svg', echo = FALSE, warning=FALSE, message=FALSE}
+#######################################################
+#####################################################
+# NOW THE SAME, BUT FOR every question in the dma
+######################################################
+#########################################################
+
+
+
+
+
+start <- which(names(datamerge) == "q11ai")
+finish <- which(names(datamerge) == "q115")
+sequence = seq(start,finish,1)
+realizationlist = c("No",
+                    "Yes",
+                    "Not used",
+                    "Consider to use", 
+                    "Prototyping", 
+                    "Testing", 
+                    "Implementing",
+                    "Operational",
+                    "Not",
+                    "Partially",
+                    "Yess")
+possiblevalues = seq(0,1,0.2)
+questionlist = names(datamerge)[start:finish]
+
+
+probmatrix = matrix(NA,  length(realizationlist), length(sequence))
+rownames(probmatrix) = realizationlist
+colnames(probmatrix) = questionlist
+
+cursedquestions = c("q41", "q42", "q43", "q44", "q45", "q46", "q47",
+                    "q91", "q92","q93","q94","q95")
+
+verycursedquestions = c("q111","q112","q113", "q114", "q115")
+
+for (i in start : finish){
+  if(names(datamerge)[i] %in% cursedquestions){
+    count = 1
+    for (j in 3:8){
+      probmatrix[j,which(sequence==i)] = table(datamerge[,i])[count]/sum(table(datamerge[,i]))
+      count = count + 1
+    }
+  } 
+  else { if(names(datamerge)[i] %in% verycursedquestions){
+    count = 1
+    for (j in 9:11){
+      probmatrix[j,which(sequence==i)] = table(datamerge[,i])[count]/sum(table(datamerge[,i]))
+      count = count + 1
+    }
+  } else {
+      count = 1
+      for (j in 1:2){
+        probmatrix[j,which(sequence==i)] = table(datamerge[,i])[count]/sum(table(datamerge[,i]))
+        count = count + 1
+  }}}
+}
+
+
+
+# Assuming `probmatrix` is your matrix object
+# Load the required packages
+library(ggplot2)
+library(reshape2)
+
+# # Transpose and order the matrix by the first row in descending order
+# transposed_probmatrix <- t(probmatrix)
+# ordered_transposed_probmatrix  <- transposed_probmatrix[order(-transposed_probmatrix[, 1]), ]
+# probmatrix <- t(ordered_transposed_probmatrix)
+
+
+# Convert the matrix to a datamod frame, preserving row names as a separate column
+datamod <- as.data.frame(probmatrix)
+datamod$Subpopulation <- rownames(probmatrix) # Add the row names as a new column
+
+# Convert 'Subpopulation' to a factor with levels in the order you want
+ordered_subpopulations <- c("No", "Yes", "Not used", "Consider to use", "Prototyping", "Testing", "Implementing", "Operational",
+                    "Not",
+                    "Partially",
+                    "Yess")
+datamod$Subpopulation <- factor(datamod$Subpopulation, levels = ordered_subpopulations)
+
+# Melt the datamod frame into long format with the added Subpopulation column
+datamod_long <- melt(datamod, id.vars = "Subpopulation")
+
+# Define a color palette for the subpopulations with distinguishable shades
+color_palette <- setNames(c( "#800000", "#006400", "#800000", "#E9967A", "#FFD700", "#32CD32", "#008000", "#006400", "#800000",  "#FFD700", "#006400"), ordered_subpopulations)
+
+# Reorder the factor levels so that q11ai is last (which will be on top after coord_flip)
+datamod_long$variable <- factor(datamod_long$variable, levels = rev(unique(datamod_long$variable)))
+
+# Now create the plot with ggplot2
+p <- ggplot(datamod_long, aes(x = variable, y = value, fill = Subpopulation)) +
+  geom_bar(stat = "identity", position = position_fill(reverse = TRUE)) +
+  scale_fill_manual(values = color_palette) +
+  coord_flip() +
+  theme_minimal() +
+  labs(y = "", x = "", fill = "") +
+  geom_text(aes(label = ifelse(value > 0.05, paste0(round(value * 100), "%"), "")),
+            position = position_fill(reverse = TRUE),
+            color = "white", size = 5, angle = 0, hjust = 1.25, vjust = 0.5, fontface = "bold")
+
+print(p)
+
+
+
+
+
+
+
+
+```
+
+
+
+
+
+
+```{r circlize, dev='svg'}
+library(circlize)
+library(grDevices)
+
+# Define a fixed color palette
+fixed_colors <- c(
+  dbsscore = "#242424",  #
+  drscore = "#3b6a71",   # Corresponds to the third color in node_colors
+  hcdscore = "#004494",  # Corresponds to the fourth color in node_colors
+  dmscore = "#ed8d2f",   # Corresponds to the fifth color in node_colors
+  aaiscore = "#800000",
+  gdscore = "#006401"
+)
+
+fixed_colors_sub <- c(
+  q1score = "#242424",
+  q2score = "#242424",
+  q3score = "#3b6a71",
+  q4score = "#3b6a71",
+  q5score = "#004494",
+  q6score = "#004494",
+  q7score = "#ed8d2f",
+  q8score = "#ed8d2f",
+  q9score = "#800000",
+  q10score = "#006401",
+  q11score = "#006401"
+)
+
+
+
+# Ensure the correlation matrices are prepared correctly
+verysmallcorrmatrix[upper.tri(verysmallcorrmatrix)] <- 0
+thebigcorrmatrix[upper.tri(thebigcorrmatrix)] <- 0
+thebigcorrmatrix <- thebigcorrmatrix[-1, -1]
+thebigpolycorrmatrix <- thebigpolycorrmatrix[-1, -1]
+thesmallcorrmatrix[upper.tri(thesmallcorrmatrix)] <- 0
+
+# Function to blend two colors with transparency
+blend_colors <- function(color1, color2, alpha = 0.7) {
+  col1 <- col2rgb(color1, alpha = TRUE)
+  col2 <- col2rgb(color2, alpha = TRUE)
+  blended <- (col1 * alpha + col2 * (1 - alpha)) / 255
+  rgb(blended[1], blended[2], blended[3], alpha = 0.7)  # Set alpha to 0.7 for transparency
+}
+
+# Create a color matrix for thesmallcorrmatrix
+col_mat <- matrix(NA, nrow = nrow(thesmallcorrmatrix), ncol = ncol(thesmallcorrmatrix))
+for (i in 1:nrow(thesmallcorrmatrix)) {
+  for (j in 1:ncol(thesmallcorrmatrix)) {
+    if (thesmallcorrmatrix[i, j] >= 0.45 && thesmallcorrmatrix[i, j] < 1) {
+      col_mat[i, j] <- blend_colors(fixed_colors_sub[names(fixed_colors_sub)[i]], fixed_colors_sub[names(fixed_colors_sub)[j]], alpha = 0.7)
+    } else {
+      col_mat[i, j] <- "#00000000"
+    }
+  }
+}
+
+
+# Save the second plot using a graphical device for the chord diagram
+png(file.path(paste0(outputfolder, "/thesmallcorrmatrix_plot.png")), width = 2000, height = 2000, res = 300)
+chordDiagram(thesmallcorrmatrix, grid.col = fixed_colors_sub, col = col_mat, link.lwd = 2)
+dev.off()
+# Plot the chord diagram for thesmallcorrmatrix with blended colors
+
+
+
+
+ # Replace with your actual output folder path
+#ggsave(filename = file.path(paste0(outputfolder, "/thesmallcorrmatrix_plot.png")))
+
+# Generate colors for verysmallcorrmatrix
+num_colors <- length(verysmallcorrmatrix)
+colors <- rainbow(num_colors, alpha = 0.7)
+
+# Create a color matrix for verysmallcorrmatrix
+col_mat <- matrix(NA, nrow = nrow(verysmallcorrmatrix), ncol = ncol(verysmallcorrmatrix))
+for (i in 1:nrow(verysmallcorrmatrix)) {
+  for (j in 1:ncol(verysmallcorrmatrix)) {
+    if (verysmallcorrmatrix[i, j] >= 0.45 && verysmallcorrmatrix[i, j] < 1) {
+      col_mat[i, j] <- blend_colors(fixed_colors[names(fixed_colors)[i]], fixed_colors[names(fixed_colors)[j]], alpha = 0.7)
+    } else {
+      col_mat[i, j] <- "#00000000"
+    }
+  }
+}
+
+# Plot the chord diagram for verysmallcorrmatrix with blended colors
+#chordDiagram(verysmallcorrmatrix, grid.col = fixed_colors, col = col_mat, link.lwd = 2)
+
+# Save the second plot
+#ggsave(filename = file.path(paste0(outputfolder, "/thesmallcorrmatrix_plot.png")))
+
+# Save the second plot using a graphical device for the chord diagram
+png(file.path(paste0(outputfolder, "/theverysmallcorrmatrix_plot.png")), width = 2000, height = 2000, res = 300)
+chordDiagram(verysmallcorrmatrix, grid.col = fixed_colors, col = col_mat, link.lwd = 2)
+dev.off()
+
+
+```
+
+
+
+
+
+
+
+
+```{r networkplots, dev='svg'}
+# Install and load the igraph package if you haven't already done so
+if (!require(igraph)) install.packages("igraph")
+library(igraph)
+
+
+
+# Convert the correlation matrix into an adjacency matrix
+# By default, the graph will be undirected
+graph <- graph_from_adjacency_matrix(thebigcorrmatrix, mode = "undirected", weighted = TRUE, diag = FALSE)
+
+# Set edge width based on the weights (correlation strengths)
+E(graph)$width <- E(graph)$weight * 2  # Scale the widths as needed
+
+# Choose a layout algorithm, e.g., 'layout_with_fr' for Fruchterman-Reingold
+layout <- layout_with_fr(graph)
+
+# Plot the graph
+plot(graph, layout = layout, edge.width = E(graph)$width,
+     vertex.color = "lightblue", vertex.size = 30,
+     vertex.frame.color = "gray", vertex.label.color = "black",
+     vertex.label.cex = 0.8, edge.color = "grey50",
+     main = "Network Graph of thebigcorrmatrix")
+
+library(igraph)
+library(ggplot2)
+library(ggraph)
+
+
+
+# Convert the correlation matrix into an adjacency matrix
+graph <- graph_from_adjacency_matrix(thebigcorrmatrix, mode = "undirected", weighted = TRUE, diag = FALSE)
+
+# Define the threshold
+threshold <- 0.3
+
+# Filter edges based on the threshold
+graph <- delete_edges(graph, E(graph)[weight <= threshold & weight >= -0.1])
+
+
+
+
+# Set node colors (this could also come from external data)
+# node_colors <- c("#242424","#3b6a71", "#004494", "#ed8d2f", "#800000", "#006401")
+node_colors <- c(
+  "#242424", "#242424", "#242424", "#242424", "#242424", "#242424", "#242424", "#242424", "#242424", "#242424",
+  "#242424", "#242424", "#242424", "#242424", "#242424", "#242424", "#242424", "#242424", "#242424", "#242424",
+  "#242424", "#242424", "#242424", "#242424", "#242424", "#242424", "#242424", "#242424", "#242424", "#242424",
+  "#3b6a71", "#3b6a71", "#3b6a71", "#3b6a71", "#3b6a71", "#3b6a71", "#3b6a71", "#3b6a71", "#3b6a71", "#3b6a71",
+  "#3b6a71", "#3b6a71", "#3b6a71", "#3b6a71", "#3b6a71", "#3b6a71", "#3b6a71",
+  "#004494", "#004494", "#004494", "#004494", "#004494", "#004494", "#004494",
+  "#004494", "#004494", "#004494", "#004494", "#004494", "#004494", "#004494", "#004494",
+  "#ed8d2f", "#ed8d2f", "#ed8d2f", "#ed8d2f", "#ed8d2f", "#ed8d2f", "#ed8d2f", "#ed8d2f",
+  "#ed8d2f", "#ed8d2f", "#ed8d2f", "#ed8d2f", "#ed8d2f", "#ed8d2f",
+  "#800000", "#800000", "#800000", "#800000", "#800000",
+  "#006401", "#006401", "#006401", "#006401", "#006401", "#006401", "#006401", "#006401", "#006401", "#006401",
+  "#006401", "#006401", "#006401", "#006401", "#006401"
+)
+
+V(graph)$color <- node_colors
+
+
+# Create a ggraph object using the Fruchterman-Reingold layout
+ggraph(graph, layout = 'fr') +
+  geom_edge_link(aes(edge_width = weight), color = 'grey50') +
+  geom_node_point(size = 5, aes(color = color)) +
+  geom_node_text(aes(label = name), vjust = 1.8, color = 'black') +
+  theme_void() +
+  scale_color_identity() + 
+  ggtitle("Network Graph (only correlations above 0.3)") +
+  scale_edge_width(range = c(0.1, 1.5))
+
+
+
+
+
+
+
+
+# Convert the correlation matrix into an adjacency matrix
+graph <- graph_from_adjacency_matrix(thebigpolycorrmatrix, mode = "undirected", weighted = TRUE, diag = FALSE)
+
+# Define the threshold
+threshold <- 0.3
+
+# Filter edges based on the threshold
+graph <- delete_edges(graph, E(graph)[weight <= threshold])
+
+
+
+V(graph)$color <- node_colors
+
+
+# Create a ggraph object using the Fruchterman-Reingold layout
+ggraph(graph, layout = 'fr') +
+  geom_edge_link(aes(edge_width = weight), color = 'grey50') +
+  geom_node_point(size = 5, aes(color = color)) +
+  geom_node_text(aes(label = name), vjust = 1.8, color = 'black') +
+  theme_void() +
+  scale_color_identity() + 
+  ggtitle("Network Graph (only correlations above 0.3)") +
+  scale_edge_width(range = c(0.1, 3))
+
+ggsave(paste0(outputfolder,"/network_graph.pdf"), width = 10, height = 6) # Save the plot as a PDF file
+
+
+```
+
+```{r principalcompanalysis, dev='svg'}
+#pcadata <- datamerge[,c(103,7:102)]
+#pcadata <- datamerge[,c(103:109)]
+pcadata <- datamerge[,c(103,110:120)]
+
+# Remove rows with any NA values
+pcadata <- na.omit(pcadata)
+
+
+
+
+
+
+# Load necessary library
+if (!require(stats)) install.packages("stats")
+library(stats)
+
+
+# Perform PCA using prcomp
+pca_result <- prcomp(pcadata, scale. = TRUE) # Standardize variables
+
+# Proportion of variance explained by each principal component
+prop_var_explained <- pca_result$sdev^2 / sum(pca_result$sdev^2)
+
+# Cumulative proportion of variance explained
+cum_var_explained <- cumsum(prop_var_explained)
+
+# Determine the number of components to retain
+# For example, retain enough components to explain 90% of the variance
+num_components_to_retain <- which(cum_var_explained >= 0.90)[1]
+
+# Extract the scores (coordinates) for the retained components
+scores <- pca_result$x[, 1:num_components_to_retain]
+
+# Now 'scores' contains the reduced dataset with fewer dimensions
+
+# Visualization
+
+# Scree plot to visualize the variance explained by each principal component
+plot(prop_var_explained, xlab = "Principal Component", ylab = "Proportion of Variance Explained", type = "b", pch = 19, main = "Scree Plot")
+abline(h = 1 / ncol(pcadata), col = "red", lty = 2) # Adds a reference line for average eigenvalue
+
+# Cumulative variance explained plot
+plot(cum_var_explained, xlab = "Number of Principal Components", ylab = "Cumulative Proportion of Variance Explained", type = "b", pch = 19, main = "Cumulative Variance Explained")
+abline(h = 0.90, col = "blue", lty = 2) # Adds a reference line at 90% variance explained
+
+# Biplots can show both scores and loadings for the first two principal components
+biplot(pca_result, xlabs=rep("", nrow(pcadata)), main = "PCA Biplot", pch = 20, cex = 1)
+
+
+# The number of components to retain based on the chosen threshold (e.g., 90% cumulative variance explained)
+cat("Number of components to retain (90% variance explained):", num_components_to_retain, "\n")
+
+
+
+# Install and load the stargazer package if not already installed
+if (!require(stargazer)) install.packages("stargazer")
+library(stargazer)
+
+
+# Extract the loadings (rotation) for the first few principal components
+# For example, extracting the first two principal components
+loadings <- pca_result$rotation[, 1:5]
+
+# Convert the loadings to a data frame
+loadings_df <- as.data.frame(loadings)
+
+# Name the components (optional)
+names(loadings_df) <- c("PC1", "PC2")
+
+# Use stargazer to create a table
+stargazer(loadings_df, type = "text", title = "Loadings of the First Two Principal Components")
+
+
+
+```
+
+
+```{r coinrpca}
+# library(COINr)
+# 
+# iData <- data[,c(1,5,6:119)]
+# names(iData)[1] <- "Time"
+# names(iData)[2] <- "uCode"
+# 
+# iData <- iData %>% distinct(uCode, Time, .keep_all = TRUE)
+# iMeta <- read_xlsx("iMeta.xlsx")
+# 
+# iData <- iData[iData$Time==0,]
+# 
+# 
+# coin <- new_coin(iData, iMeta)
+# 
+# pca <- get_PCA(coin, Level = 1, out2 = "list")
+
+# 
+# 
+# library(grid)
+# 
+# # Assuming pca_scores_q9 contains the PCA scores for the first two principal components
+# # Extract the variable loadings for the first two principal components
+# loadings <- pca$PCAresults$q9score$PCAres$rotation[, 1:2]
+# 
+# # Convert the loadings to a data frame
+# loadings_df <- as.data.frame(loadings)
+# rownames_to_column(loadings_df, var = "variable")  # Convert row names to a column
+# 
+# # Create a base scatter plot of the PCA scores
+# pca_plot <- ggplot(data = pca_scores_q9_df, aes(x = PC1, y = PC2)) +
+#   geom_point() +
+#   theme_minimal() +
+#   labs(x = "Principal Component 1 (PC1)", y = "Principal Component 2 (PC2)",
+#        title = "PCA Scatter Plot with Biplot Arrows for q9score")
+# 
+# # Add the biplot arrows to the plot
+# pca_plot <- pca_plot + geom_segment(data = loadings_df, aes(x = 0, y = 0, xend = PC1, yend = PC2),
+#                                     arrow = arrow(type = "closed", length = unit(0.2, "inches")),
+#                                     color = "red", size = 0.5)
+# 
+# # Optionally, add text labels to the arrows to indicate variable names
+# pca_plot <- pca_plot + geom_text(data = loadings_df, aes(x = PC1, y = PC2, label = variable),
+#                                  color = "red", size = 3, vjust = 1.5, hjust = 1.5)
+# 
+# # Display the plot
+# print(pca_plot)
+```
+
+
+
+
+```{r t1-t0, dev='svg'}
+
+library(dplyr)
+
+# Filter the dataframe to only include time points 0 and 1
+data_filtered <- data %>%
+  filter(time %in% c(0, 1))
+
+data_filtered <- data_filtered[!is.na(data_filtered$sme_name),]
+
+# Find the fiscal_codes that have both time points 0 and 1
+fiscal_codes_with_both_times <- data_filtered %>%
+  group_by(fiscal_code) %>%
+  filter(all(c(0, 1) %in% time)) %>%
+  ungroup() %>%
+  dplyr::select(fiscal_code) %>%
+  distinct()
+
+# Create a new dataframe that contains only the observations with both time points 0 and 1
+data_panel <- data_filtered %>%
+  semi_join(fiscal_codes_with_both_times, by = "fiscal_code")
+
+
+# Calculate the difference in assess_date and filter out those with less than n months difference
+monthslag <- 0
+
+data_panel <- data_panel %>%
+  group_by(fiscal_code, ent_name) %>%
+  # Create a new dataframe that only contains fiscal codes with both time points
+  filter(all(c(0, 1) %in% time)) %>%
+  # Ensure that time 0 comes before time 1 for each fiscal code
+  arrange(fiscal_code, time) %>%
+  # Calculate the difference in 'assess_date' between time 1 and time 0
+  mutate(
+    diff_in_days = as.numeric(assess_date[time == 1] - assess_date[time == 0]),
+    # Convert the difference in days to months and check if it's at least 12 months
+    diff_in_months = diff_in_days / 30.44
+  ) %>%
+  # Filter out groups where the difference is less than 12 months
+  # We check the first value because the difference will be repeated across rows in the same group
+  filter(first(diff_in_months) >= monthslag) %>%
+  # Remove the columns used for calculations
+  select(-diff_in_days, -diff_in_months) %>%
+  ungroup()
+
+
+# Assuming 'data_panel' contains only observations for fiscal codes with both time points 0 and 1
+# Calculate the difference in 'dmascore' between time 1 and time 0 for each 'fiscal_code'
+data_change_in_dmascore <- data_panel %>%
+  # Arrange the data to ensure that time 0 comes before time 1 for each fiscal code
+  arrange(fiscal_code, time) %>%
+  # Group by 'fiscal_code' to perform operations within each group
+  group_by(fiscal_code) %>%
+  # Use 'summarize' to calculate the change in 'dmascore' (assuming 'dmascore' is numeric)
+  summarize(change_in_dmascore = dmascore[time == 1] - dmascore[time == 0],
+            change_in_dbsscore = dbsscore[time == 1] - dbsscore[time == 0],
+            change_in_drscore = drscore[time == 1] - drscore[time == 0],
+            change_in_hcdscore = hcdscore[time == 1] - hcdscore[time == 0],
+            change_in_dmscore = dmscore[time == 1] - dmscore[time == 0],
+            change_in_aaiscore = aaiscore[time == 1] - aaiscore[time == 0],
+            change_in_gdscore = gdscore[time == 1] - gdscore[time == 0]) %>%
+  # Remove the grouping structure from the dataframe
+  ungroup()
+
+# View the results
+# print(data_change_in_dmascore)
+
+library(tidyr)
+
+
+
+# Convert data from wide to long format
+data_long <- data_change_in_dmascore %>%
+  pivot_longer(
+    cols = starts_with("change_in_"),   # Select columns that start with 'change_in_'
+    names_to = "score_change_type",     # Name of the new column for score types
+    values_to = "score_change_value"    # Name of the new column for score change values
+  )
+
+# Specify the desired order of the score change types
+desired_order <- c("change_in_dmascore", "change_in_dbsscore", "change_in_drscore",
+                   "change_in_hcdscore", "change_in_dmscore", "change_in_aaiscore",
+                   "change_in_gdscore")
+
+# Convert the 'score_change_type' to a factor with the specified levels
+data_long$score_change_type <- factor(data_long$score_change_type, levels = desired_order)
+
+# Calculate the mean for each score change type
+means <- data_long %>%
+  group_by(score_change_type) %>%
+  summarize(mean_score_change = mean(score_change_value, na.rm = TRUE))
+
+# Plot the data
+ggplot(data_long, aes(x = score_change_type, y = score_change_value)) +
+  geom_hline(yintercept = 0, linetype = "solid", color = "black", size = 1.5) + # Bold black line at 0 change
+  geom_jitter(aes(color = score_change_type), width = 0.2, alpha = 0.5, size = 2) + # Clouds of dots
+  geom_point(data = means, aes(x = score_change_type, y = mean_score_change), color = "red", size = 4) + # Mean points
+  scale_color_manual(values = rep("blue", length(unique(data_long$score_change_type)))) + # Set the colors for the clouds of dots
+  theme_minimal() +
+  labs(x = "Score Change Type", y = "Change in Score", title = "Change in Scores Across Different Measures") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) # Rotate the x-axis text for readability
+
+# Show the plot
+ggsave(paste0(outputfolder,"/score_changes_plot.pdf"), width = 10, height = 6) # Save the plot as a PDF file
+```
+
+
+```{r regressions}
+
+library(stargazer)
+
+model_formula <- dma_score ~ sector + size + country
+
+model <- lm(model_formula, data = data2)
+
+stargazer(model, type = "text")
+
+# Calculate average DMA score by sector
+# Calculate average DMA score by sector, including only sectors with at least 30 observations
+avg_score_by_sector <- data2 %>%
+  group_by(sector) %>%
+  filter(n() >= 30) %>%  # Include only sectors with at least 30 observations
+  summarize(avg_dmascore = mean(dma_score, na.rm = TRUE)) %>%
+  arrange(desc(avg_dmascore))
+
+# Plot average DMA score by sector
+sector_plot <- ggplot(avg_score_by_sector, aes(x = reorder(sector, -avg_dmascore), y = avg_dmascore)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = round(avg_dmascore, 1)), vjust = -0.5, size = 4, fontface = "bold") +  # Bold labels with size 12
+  labs(title = "Average DMA Score by Sector", x = "", y = "") +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 70, hjust = 1, face = "bold", size = 12),  # Bold x-axis labels with size 12
+        plot.margin = margin(t = 20, r = 20, b = 20, l = 20)) +  # Add margin to the plot area
+  ylim(0, max(avg_score_by_sector$avg_dmascore) * 1.2) +  # Increased the multiplier to 1.2 for more space
+  scale_x_discrete(labels = function(x) sapply(x, function(label) {
+        if (label == "Agricultural biotechnology and food biotechnology") {
+            "Agricultural and food biotech"
+        } else if (label == "Metal working and industrial production") {
+            "Metal and industrial production"  
+        } else {
+            label
+        }
+    }))
+
+# Print the sector plot 
+print(sector_plot)
+
+# Save the sector plot with taller dimensions (height increased to 8)
+ggsave(filename = file.path(outputfolder, "avg_dmascore_by_sector.png"), plot = sector_plot, 
+       device = "png", width = 12, height = 8, bg = "white")
+
+# Calculate average DMA score by size, excluding "Large company (> 3000 employees)"
+avg_score_by_size <- data2 %>%
+  filter(size != "Large company (> 3000 employees)") %>%  # Exclude the specified category
+  group_by(size) %>%
+  summarize(avg_dmascore = mean(dma_score, na.rm = TRUE)) %>%
+  arrange(desc(avg_dmascore))
+
+# Plot average DMA score by size
+size_plot <- ggplot(avg_score_by_size, aes(x = reorder(size, -avg_dmascore), y = avg_dmascore)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = round(avg_dmascore, 2)), vjust = -0.5, size = 8, fontface = "bold") +  # Bold labels
+  labs(title = "Average DMA Score by Size", x = "Size", y = "") +
+  theme(axis.title.x = element_blank(),
+        axis.text.y = element_text(
+          size = 16,
+          face = "bold"
+        ),
+        axis.text.x = element_text(
+          angle = 0, 
+          hjust = 0.5, 
+          face = "bold", 
+          size = 16,
+          lineheight = 1.2
+        ),  # Bold, centered, multiline text
+        plot.margin = margin(t = 20, r = 20, b = 20, l = 20)) +  # Add margin to the plot area
+  ylim(0, max(avg_score_by_size$avg_dmascore) * 1.1) +  # Set the y-axis limits
+  scale_x_discrete(labels = function(x) sapply(x, function(label) {
+    if (nchar(label) > 20) {
+      paste(strwrap(label, width = 20), collapse = "\n")
+    } else {
+      label
+    }
+  }))
+
+# Print the size plot
+print(size_plot)
+
+# Save the size plot with taller height to accommodate wrapped text
+ggsave(filename = file.path(outputfolder, "avg_dmascore_by_size.png"), 
+       plot = size_plot, device = "png", width = 16, height = 8, bg = "white")
+
+# Calculate average DMA score by size, excluding "Large company (> 3000 employees)"
+avg_score_by_size <- data2 %>%
+  filter(size != "Large company (> 3000 employees)") %>%  # Exclude the specified category
+  group_by(size) %>%
+  summarize(avg_dmascore = mean(dma_score, na.rm = TRUE)) %>%
+  arrange(desc(avg_dmascore))
+
+# Plot average DMA score by size
+size_plot <- ggplot(avg_score_by_size, aes(x = reorder(size, -avg_dmascore), y = avg_dmascore)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = round(avg_dmascore, 2)), vjust = -0.5, size = 4) +  # Label placement and size
+  labs(title = "Average DMA Score by Size", x = "Size", y = "Average DMA Score") +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1),  # Rotate x-axis labels
+        plot.margin = margin(t = 20, r = 20, b = 20, l = 20)) +  # Add margin to the plot area
+  ylim(0, max(avg_score_by_size$avg_dmascore) * 1.1)  # Set the y-axis limits
+
+# Print the size plot
+print(size_plot)
+
+# Save the size plot
+ggsave(filename = file.path(outputfolder, "avg_dmascore_by_size.png"), plot = size_plot, device = "png", width = 10, height = 6, bg = "white")
+
+# Function to calculate and plot average DMA score by size for a given category
+plot_avg_dma_score_by_size <- function(data, category, output_name) {
+  avg_score_by_size <- data %>%
+    filter(size != "Large company (> 3000 employees)") %>%  # Exclude the specified category
+    group_by(size) %>%
+    summarize(avg_dmascore = mean(.data[[category]], na.rm = TRUE)) %>%
+    arrange(desc(avg_dmascore))
+  
+  size_plot <- ggplot(avg_score_by_size, aes(x = reorder(size, -avg_dmascore), y = avg_dmascore)) +
+    geom_bar(stat = "identity", fill = "steelblue") +
+    geom_text(aes(label = round(avg_dmascore, 2)), vjust = -0.5, size = 10, fontface = "bold") +  # Label placement, size, and bold
+    labs(title = paste(""), x = "Size", y = "") +
+    theme(axis.title.x = element_blank(),
+          axis.text.y = element_text(
+            size = 28,
+            face = "bold"
+          ),
+          axis.text.x = element_text(
+            angle = 0, 
+            hjust = 0.5, 
+            face = "bold", 
+            size = 28,
+            lineheight = 1.2
+          ),  # Horizontal labels, centered, bold, and larger
+          plot.margin = margin(t = 10, r = 10, b = 10, l = 10)) +  # Add margin to the plot area
+    ylim(0, 100) +  # Set the y-axis limits
+    scale_x_discrete(labels = function(x) sapply(x, function(label) {
+      if (nchar(label) > 15) {
+        paste(strwrap(label, width = 15), collapse = "\n")
+      } else {
+        label
+      }
+    }))
+  
+  # Print the size plot
+  print(size_plot)
+  
+  # Save the size plot with increased height to accommodate wrapped text
+  ggsave(filename = file.path(outputfolder, paste0(output_name, ".png")), 
+         plot = size_plot, device = "png", width = 20, height = 12, bg = "white")
+}
+
+# List of categories and corresponding output file names
+categories <- c("dig_business_strat", "dig_readiness", "hum_centr_dig", "data_gov", "automation_ai", "green_dig")
+output_names <- c("avg_dmascore_by_size_dig_business_strat", "avg_dmascore_by_size_dig_readiness", 
+                  "avg_dmascore_by_size_hum_centr_dig", "avg_dmascore_by_size_data_gov", 
+                  "avg_dmascore_by_size_automation_ai", "avg_dmascore_by_size_green_dig")
+
+# Loop through each category and create the plots
+for (i in seq_along(categories)) {
+  plot_avg_dma_score_by_size(data2, categories[i], output_names[i])
+}
+
+
+# Calculate average score and quantiles for each dimension and overall score
+summary_stats <- data.frame(
+  dimension = c("dma_score", "dig_business_strat", "dig_readiness", "hum_centr_dig", "data_gov", "automation_ai", "green_dig"),
+  avg = c(
+    mean(data2$dma_score, na.rm = TRUE),
+    mean(data2$dig_business_strat, na.rm = TRUE),
+    mean(data2$dig_readiness, na.rm = TRUE),
+    mean(data2$hum_centr_dig, na.rm = TRUE),
+    mean(data2$data_gov, na.rm = TRUE),
+    mean(data2$automation_ai, na.rm = TRUE),
+    mean(data2$green_dig, na.rm = TRUE)
+  ),
+  q25 = c(
+    quantile(data2$dma_score, 0.25, na.rm = TRUE),
+    quantile(data2$dig_business_strat, 0.25, na.rm = TRUE),
+    quantile(data2$dig_readiness, 0.25, na.rm = TRUE),
+    quantile(data2$hum_centr_dig, 0.25, na.rm = TRUE),
+    quantile(data2$data_gov, 0.25, na.rm = TRUE),
+    quantile(data2$automation_ai, 0.25, na.rm = TRUE),
+    quantile(data2$green_dig, 0.25, na.rm = TRUE)
+  ),
+  q75 = c(
+    quantile(data2$dma_score, 0.75, na.rm = TRUE),
+    quantile(data2$dig_business_strat, 0.75, na.rm = TRUE),
+    quantile(data2$dig_readiness, 0.75, na.rm = TRUE),
+    quantile(data2$hum_centr_dig, 0.75, na.rm = TRUE),
+    quantile(data2$data_gov, 0.75, na.rm = TRUE),
+    quantile(data2$automation_ai, 0.75, na.rm = TRUE),
+    quantile(data2$green_dig, 0.75, na.rm = TRUE)
+  )
+)
+
+# Ensure the dimensions are in the correct order
+summary_stats$dimension <- factor(summary_stats$dimension, levels = c("dma_score", "dig_business_strat", "dig_readiness", "hum_centr_dig", "data_gov", "automation_ai", "green_dig"))
+
+# Plot the data
+dma_plot <- ggplot(summary_stats, aes(x = dimension, y = avg)) +
+  geom_errorbar(aes(ymin = q25, ymax = q75), width = 0.1, color = "blue", size = 1.5) + # Narrower lines for the box plots
+  geom_point(size = 4, color = "red") + # Red dot superimposed on the blue line
+  labs(title = NULL, x = NULL, y = NULL) + # Remove axis titles
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, face = "bold", size=12),  # Bold and rotated x-axis labels
+        axis.text.y = element_text(face="bold", size=12),
+        plot.margin = margin(t = 20, r = 20, b = 20, l = 20))  # Add margin to the plot area
+
+# Print the plot
+print(dma_plot)
+
+# Save the plot
+ggsave(filename = file.path(outputfolder, "dma_score_quantiles.png"), plot = dma_plot, device = "png", width = 12, height = 5, bg = "white")
+
+```
+

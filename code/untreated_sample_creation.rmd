@@ -1,0 +1,218 @@
+---
+title: "DigINNOVA - DMA Analysis"
+author: "Federico Vicentini"
+date: "05/10/2024"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+
+# LINE ADDED TO USE R 4.0 INSTEAD OF 4.3
+# Specify the path to the desired version of R
+# Sys.setenv(PATH = paste0("C:/Program Files/R/R-4.0.5/bin;", Sys.getenv("PATH")))
+
+
+knitr::opts_chunk$set(echo = TRUE)
+
+# Clear the variables
+rm(list = ls())
+
+
+# Set the working directory to source file location with
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+
+# Install packages
+# packages <- c("ggplot2", "readxl", "corrplot", "dplyr", 
+#               "stargazer", "data.table", "stringdist", 
+#               "progress", "rlang", "openxlsx",
+#               "stringi", "cowplot", "gridExtra",
+#               "stats", "mfx", "MASS", "AER", "caret",
+#               "detectseparation", "randomForest",
+#               "partykit", "tree", "tidyr", "margins",
+#               "factoextra", "missMDA", "reshape2",
+#               "geosphere", "RANN", "pscl",
+#               "pROC", "car", "caret", "broom")
+packages <- c("data.table", "openxlsx", "progress")  # Only keeping what's actually used
+new.packages <- packages[!(packages %in% installed.packages()[, "Package"])]
+if (length(new.packages)) install.packages(new.packages)
+invisible(lapply(packages, library, character.only = TRUE))
+```
+
+
+
+
+```{r sample creation}
+
+workdir <- dirname(getwd())
+
+datafolder <- paste0(workdir, "/Data")
+
+outputfolder <- paste0(workdir, "/Output")
+
+list_isocodes <- c("LT", "LV", "ES", "GR", "FR", "FI", "SI", "EE", "IT", "NL",
+                   "DE", "AT", "DK", "IE", "BE", "HR", "BG", "CZ")
+list_nutscodes <- c("LT", "LV", "ES", "EL", "FR", "FI", "SI", "EE", "IT", "NL",
+                    "DE", "AT", "DK", "IE", "BE", "HR", "BG", "CZ")
+path_list<- c(paste0(datafolder, "/Orbis-LT-Universe.csv"),
+              paste0(datafolder, "/Orbis-LV-Universe.csv"),
+              paste0(datafolder, "/Orbis-ES-Universe.csv"),
+              paste0(datafolder, "/Orbis-GR-Universe.csv"),
+              paste0(datafolder, "/Orbis-FR-Universe.csv"),
+              paste0(datafolder, "/Orbis-FI-Universe.csv"),
+              paste0(datafolder, "/Orbis-SI-Universe.csv"),
+              paste0(datafolder, "/Orbis-EE-Universe.csv"),
+              paste0(datafolder, "/Orbis-IT-Universe.csv"),
+              paste0(datafolder, "/Orbis-NL-Universe.csv"),
+              paste0(datafolder, "/Orbis-DE-Universe.csv"),
+              paste0(datafolder, "/Orbis-AT-Universe.csv"),
+              paste0(datafolder, "/Orbis-DK-Universe.csv"),
+              paste0(datafolder, "/Orbis-IE-Universe.csv"),
+              paste0(datafolder, "/Orbis-BE-Universe.csv"),
+              paste0(datafolder, "/Orbis-HR-Universe.csv"),
+              paste0(datafolder, "/Orbis-BG-Universe.csv"),
+              paste0(datafolder, "/Orbis-CZ-Universe.csv"))
+
+# Create a sample comparison country by country by picking random bvd_ids
+
+# Set the sample size
+sample_size <- 1000  # Adjust as needed
+
+set.seed <- 150599
+
+# Initialize a list to store the sampled data frames
+sampled_data <- data.frame(bvdid = character(),
+                            NAME_INTERNAT = character(),
+                            COUNTRY = character(),
+                            CTRYISO = character())
+
+# Loop through each country
+for (i in seq_along(list_isocodes)) {
+    file_path <- path_list[i]
+
+    # Read the CSV file into a data frame
+    country_data <- data.table::fread(file = file_path)
+    
+    newsample <- country_data[sample(nrow(country_data), sample_size), ]
+
+    # Take a sample from the data frame
+    sampled_data <- rbind(sampled_data, newsample)
+    
+    # Remove the data frame from memory
+    rm(country_data, newsample)
+
+    print(paste0("Country ",list_isocodes[i]," is done."))
+}
+
+# Now is uncommented TO AVOID WRITING OVER THE FILE.
+# UNCOMMENT AT YOUR PERIL
+# write.xlsx(sampled_data, file = "sampled_bvdids.xlsx")
+
+
+# Attempt to load the whole ORBIS 18-country universe
+
+# eu_universe_path <- paste0(datafolder, "/Orbis-eu-Universe.csv")
+# country_data <- data.table::fread(eu_universe_path) 
+
+# we can confirm it was doable, BUT it takes some time to load
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r sample creation, include = TRUE, echo = FALSE, warning=FALSE, dev="svg"}
+
+# THIS WAS ALREADY HERE AS OF 08/01/2025
+
+list_isocodes <- c("LT", "LV", "ES", "GR", "FR", "FI", "SI", "EE", "IT", "NL",
+                   "DE", "AT", "DK", "IE", "BE", "HR", "BG", "CZ")
+list_nutscodes <- c("LT", "LV", "ES", "EL", "FR", "FI", "SI", "EE", "IT", "NL",
+                    "DE", "AT", "DK", "IE", "BE", "HR", "BG", "CZ")
+path_list<- c("Orbis-LT-Universe.csv",
+              "Orbis-LV-Universe.csv",
+              "Orbis-ES-Universe.csv",
+              "Orbis-GR-Universe.csv",
+              "Orbis-FR-Universe.csv",
+              "Orbis-FI-Universe.csv",
+              "Orbis-SI-Universe.csv",
+              "Orbis-EE-Universe.csv",
+              "Orbis-IT-Universe.csv",
+              "Orbis-NL-Universe.csv",
+              "Orbis-DE-Universe.csv",
+              "Orbis-AT-Universe.csv",
+              "Orbis-DK-Universe.csv",
+              "Orbis-IE-Universe.csv",
+              "Orbis-BE-Universe.csv",
+              "Orbis-HR-Universe.csv",
+              "Orbis-BG-Universe.csv",
+              "Orbis-CZ-Universe.csv")
+
+
+#############################################
+#### UNTREATED SAMPLE CREATION ##############
+#############################################
+
+
+# Create a sample comparison country by country by picking random bvd_ids
+
+# Set the sample size
+sample_size <- 1000  # Adjust as needed
+
+set.seed <- 150599
+
+# Initialize a list to store the sampled data frames
+sampled_data <- data.frame(bvdid = character(),
+                            NAME_INTERNAT = character(),
+                            COUNTRY = character(),
+                            CTRYISO = character())
+
+# Loop through each country
+for (i in seq_along(list_isocodes)) {
+    file_path <- path_list[i]
+
+    # Read the CSV file into a data frame
+    country_data <- data.table::fread(file_path)
+    
+    newsample <- country_data[sample(nrow(country_data), sample_size), ]
+
+    # Take a sample from the data frame
+    sampled_data <- rbind(sampled_data, newsample)
+    
+    # Remove the data frame from memory
+    rm(country_data, newsample)
+
+    print(paste0("Country ",list_isocodes[i]," is done."))
+}
+
+
+write.xlsx(sampled_data, file = "sampled_bvdids.xlsx")
+
+
+```

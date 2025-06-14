@@ -1,0 +1,785 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.3 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{cms/global//global/global/global}
+    \entry{bloom2020}{article}{}{}
+      \name{author}{4}{}{%
+        {{un=0,uniquepart=base,hash=1f9ed1162402cc5a63ec1d1f470ea527}{%
+           family={Bloom},
+           familyi={B\bibinitperiod},
+           given={Nicholas},
+           giveni={N\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=36bf88f6a0c291936a6300dfc04afeb2}{%
+           family={Jones},
+           familyi={J\bibinitperiod},
+           given={Charles\bibnamedelima I.},
+           giveni={C\bibinitperiod\bibinitdelim I\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=f70553b3e26946f6aa958883ea10f035}{%
+           family={Van\bibnamedelima Reenen},
+           familyi={V\bibinitperiod\bibinitdelim R\bibinitperiod},
+           given={John},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=4d9bb2f94c2145174490ed6771193808}{%
+           family={Webb},
+           familyi={W\bibinitperiod},
+           given={Michael},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{bb325fe46940bbf5d2eabf28a8415da6}
+      \strng{fullhash}{91bbbe0049de56f97733a80b0dd33c64}
+      \strng{fullhashraw}{91bbbe0049de56f97733a80b0dd33c64}
+      \strng{bibnamehash}{91bbbe0049de56f97733a80b0dd33c64}
+      \strng{authorbibnamehash}{91bbbe0049de56f97733a80b0dd33c64}
+      \strng{authornamehash}{bb325fe46940bbf5d2eabf28a8415da6}
+      \strng{authorfullhash}{91bbbe0049de56f97733a80b0dd33c64}
+      \strng{authorfullhashraw}{91bbbe0049de56f97733a80b0dd33c64}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{author}
+      \field{journaltitle}{American Economic Review}
+      \field{month}{4}
+      \field{number}{4}
+      \field{title}{Are Ideas Getting Harder to Find?}
+      \field{volume}{110}
+      \field{year}{2020}
+      \field{pages}{1104\bibrangedash 44}
+      \range{pages}{41}
+    \endentry
+    \entry{carmonalavado2022}{article}{}{}
+      \name{author}{4}{}{%
+        {{un=0,uniquepart=base,hash=cee9a24445c576db36a34e3a1baa1190}{%
+           family={{Carmona-Lavado Antonio}},
+           familyi={C\bibinitperiod}}}%
+        {{un=0,uniquepart=base,hash=da642c5638d481d492af6417635393ac}{%
+           family={{Cuevas-Rodríguez Gloria}},
+           familyi={C\bibinitperiod}}}%
+        {{un=0,uniquepart=base,hash=0fda42a4e4130cebb1d4df1a7adc7fed}{%
+           family={{Cabello-Medina Carmen}},
+           familyi={C\bibinitperiod}}}%
+        {{un=0,uniquepart=base,hash=0cf05af5bbee7a30b81630a773612ec3}{%
+           family={{Fedriani Eugenio M.}},
+           familyi={F\bibinitperiod}}}%
+      }
+      \strng{namehash}{46fedb8449d7634aad5a113ee58620d1}
+      \strng{fullhash}{f3e72d2a02b5cec3172080e16e2bb22e}
+      \strng{fullhashraw}{f3e72d2a02b5cec3172080e16e2bb22e}
+      \strng{bibnamehash}{f3e72d2a02b5cec3172080e16e2bb22e}
+      \strng{authorbibnamehash}{f3e72d2a02b5cec3172080e16e2bb22e}
+      \strng{authornamehash}{46fedb8449d7634aad5a113ee58620d1}
+      \strng{authorfullhash}{f3e72d2a02b5cec3172080e16e2bb22e}
+      \strng{authorfullhashraw}{f3e72d2a02b5cec3172080e16e2bb22e}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{author}
+      \field{journaltitle}{Technological Forecasting and Social Change}
+      \field{title}{Does open innovation always work? The role of complementary assets}
+      \field{year}{2021}
+    \endentry
+    \entry{Chesbrough_2003}{article}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=d8f5bbb30e3c7fbc2e4d218292ca8a53}{%
+           family={Chesbrough},
+           familyi={C\bibinitperiod},
+           given={Henry},
+           giveni={H\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{d8f5bbb30e3c7fbc2e4d218292ca8a53}
+      \strng{fullhash}{d8f5bbb30e3c7fbc2e4d218292ca8a53}
+      \strng{fullhashraw}{d8f5bbb30e3c7fbc2e4d218292ca8a53}
+      \strng{bibnamehash}{d8f5bbb30e3c7fbc2e4d218292ca8a53}
+      \strng{authorbibnamehash}{d8f5bbb30e3c7fbc2e4d218292ca8a53}
+      \strng{authornamehash}{d8f5bbb30e3c7fbc2e4d218292ca8a53}
+      \strng{authorfullhash}{d8f5bbb30e3c7fbc2e4d218292ca8a53}
+      \strng{authorfullhashraw}{d8f5bbb30e3c7fbc2e4d218292ca8a53}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{author}
+      \field{journaltitle}{Harvard Business School, 2003}
+      \field{title}{Open innovation: The new imperative for creating and profiting from technology}
+      \field{year}{2003}
+    \endentry
+    \entry{Crepon1998}{article}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=77069f653a6a5b88431525a47c9568ba}{%
+           family={Crépon},
+           familyi={C\bibinitperiod},
+           given={Bruno},
+           giveni={B\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=c9702e34735a24961576df688e8dc0d6}{%
+           family={Duguet},
+           familyi={D\bibinitperiod},
+           given={Emmanuel},
+           giveni={E\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=a544d964164a5ab9289eee53d8f2a24b}{%
+           family={Mairesse},
+           familyi={M\bibinitperiod},
+           given={Jacques},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{5f9bf2933018e1a14c263556889a5dfa}
+      \strng{fullhash}{5f9bf2933018e1a14c263556889a5dfa}
+      \strng{fullhashraw}{5f9bf2933018e1a14c263556889a5dfa}
+      \strng{bibnamehash}{5f9bf2933018e1a14c263556889a5dfa}
+      \strng{authorbibnamehash}{5f9bf2933018e1a14c263556889a5dfa}
+      \strng{authornamehash}{5f9bf2933018e1a14c263556889a5dfa}
+      \strng{authorfullhash}{5f9bf2933018e1a14c263556889a5dfa}
+      \strng{authorfullhashraw}{5f9bf2933018e1a14c263556889a5dfa}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{author}
+      \field{journaltitle}{Economics of Innovation and New Technology}
+      \field{number}{2}
+      \field{title}{Research, Innovation and Productivity: An Econometric Analysis at the Firm Level}
+      \field{volume}{7}
+      \field{year}{1998}
+      \field{pages}{115\bibrangedash 158}
+      \range{pages}{44}
+    \endentry
+    \entry{Czarnitzki2004}{report}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=858d0b3e1d37c3da69beea59f9ef541e}{%
+           family={Czarnitzki},
+           familyi={C\bibinitperiod},
+           given={Dirk},
+           giveni={D\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=70fd60b4dcf03a12b70d2a886ad12792}{%
+           family={Hussinger},
+           familyi={H\bibinitperiod},
+           given={Katrin},
+           giveni={K\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{institution}{1}{%
+        {ZEW Discussion Paper}%
+      }
+      \strng{namehash}{9d94f6b5c1039c7d55e2bdd6906067f1}
+      \strng{fullhash}{9d94f6b5c1039c7d55e2bdd6906067f1}
+      \strng{fullhashraw}{9d94f6b5c1039c7d55e2bdd6906067f1}
+      \strng{bibnamehash}{9d94f6b5c1039c7d55e2bdd6906067f1}
+      \strng{authorbibnamehash}{9d94f6b5c1039c7d55e2bdd6906067f1}
+      \strng{authornamehash}{9d94f6b5c1039c7d55e2bdd6906067f1}
+      \strng{authorfullhash}{9d94f6b5c1039c7d55e2bdd6906067f1}
+      \strng{authorfullhashraw}{9d94f6b5c1039c7d55e2bdd6906067f1}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{number}{04-56}
+      \field{title}{The Link between R\&D Subsidies, R\&D Spending and Technological Performance}
+      \field{type}{techreport}
+      \field{year}{2004}
+    \endentry
+    \entry{david2000}{article}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=4b622b714a379377cfaf27df6f9901d0}{%
+           family={David},
+           familyi={D\bibinitperiod},
+           given={Paul\bibnamedelima A.},
+           giveni={P\bibinitperiod\bibinitdelim A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=768f5fb570df5606628b905e21d45d97}{%
+           family={Hall},
+           familyi={H\bibinitperiod},
+           given={Bronwyn\bibnamedelima H.},
+           giveni={B\bibinitperiod\bibinitdelim H\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=f09c6ac7c23becb42603c1c25f14096a}{%
+           family={Toole},
+           familyi={T\bibinitperiod},
+           given={Andrew\bibnamedelima A.},
+           giveni={A\bibinitperiod\bibinitdelim A\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{19b600271fcaaf68507998470c9e8341}
+      \strng{fullhash}{19b600271fcaaf68507998470c9e8341}
+      \strng{fullhashraw}{19b600271fcaaf68507998470c9e8341}
+      \strng{bibnamehash}{19b600271fcaaf68507998470c9e8341}
+      \strng{authorbibnamehash}{19b600271fcaaf68507998470c9e8341}
+      \strng{authornamehash}{19b600271fcaaf68507998470c9e8341}
+      \strng{authorfullhash}{19b600271fcaaf68507998470c9e8341}
+      \strng{authorfullhashraw}{19b600271fcaaf68507998470c9e8341}
+      \field{sortinit}{D}
+      \field{sortinithash}{6f385f66841fb5e82009dc833c761848}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{author}
+      \field{journaltitle}{Research Policy}
+      \field{number}{4}
+      \field{title}{Is public R\&D a complement or substitute for private R\&D? A review of the econometric evidence}
+      \field{volume}{29}
+      \field{year}{2000}
+      \field{pages}{497\bibrangedash 529}
+      \range{pages}{33}
+    \endentry
+    \entry{jrc_edihreport}{article}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=feea3d1a6803e6694350a115a2b1b006}{%
+           family={{De Nigris Sarah}},
+           familyi={D\bibinitperiod}}}%
+        {{un=0,uniquepart=base,hash=a31e09689bd178e056c21b5d03ca4b49}{%
+           family={{Kalpaka Annita}},
+           familyi={K\bibinitperiod}}}%
+        {{un=0,uniquepart=base,hash=230b070be7d0a3fc5b93942bb93cb3d4}{%
+           family={{Nepelski Daniel}},
+           familyi={N\bibinitperiod}}}%
+      }
+      \strng{namehash}{1fc570cf151babd6eef307a822f3e158}
+      \strng{fullhash}{1fc570cf151babd6eef307a822f3e158}
+      \strng{fullhashraw}{1fc570cf151babd6eef307a822f3e158}
+      \strng{bibnamehash}{1fc570cf151babd6eef307a822f3e158}
+      \strng{authorbibnamehash}{1fc570cf151babd6eef307a822f3e158}
+      \strng{authornamehash}{1fc570cf151babd6eef307a822f3e158}
+      \strng{authorfullhash}{1fc570cf151babd6eef307a822f3e158}
+      \strng{authorfullhashraw}{1fc570cf151babd6eef307a822f3e158}
+      \field{sortinit}{D}
+      \field{sortinithash}{6f385f66841fb5e82009dc833c761848}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{author}
+      \field{isbn}{978-92-68-10001-1 (online)}
+      \field{journaltitle}{JRC Technical Report}
+      \field{title}{Characteristics and regional coverage of the European Digital Innovation Hubs network}
+      \field{year}{2023}
+    \endentry
+    \entry{jrc_dmamanual}{article}{}{}
+      \name{author}{4}{}{%
+        {{un=0,uniquepart=base,hash=feea3d1a6803e6694350a115a2b1b006}{%
+           family={{De Nigris Sarah}},
+           familyi={D\bibinitperiod}}}%
+        {{un=0,uniquepart=base,hash=a31e09689bd178e056c21b5d03ca4b49}{%
+           family={{Kalpaka Annita}},
+           familyi={K\bibinitperiod}}}%
+        {{un=0,uniquepart=base,hash=230b070be7d0a3fc5b93942bb93cb3d4}{%
+           family={{Nepelski Daniel}},
+           familyi={N\bibinitperiod}}}%
+        {{un=0,uniquepart=base,hash=d215fd166f3d7bbfafa579f92c564d71}{%
+           family={{Rissola Gabriel}},
+           familyi={R\bibinitperiod}}}%
+      }
+      \strng{namehash}{74e78e05b002aea96d2ba241bd5b0385}
+      \strng{fullhash}{84d5847cc5f4c323eb8fd90c167776e2}
+      \strng{fullhashraw}{84d5847cc5f4c323eb8fd90c167776e2}
+      \strng{bibnamehash}{84d5847cc5f4c323eb8fd90c167776e2}
+      \strng{authorbibnamehash}{84d5847cc5f4c323eb8fd90c167776e2}
+      \strng{authornamehash}{74e78e05b002aea96d2ba241bd5b0385}
+      \strng{authorfullhash}{84d5847cc5f4c323eb8fd90c167776e2}
+      \strng{authorfullhashraw}{84d5847cc5f4c323eb8fd90c167776e2}
+      \field{sortinit}{D}
+      \field{sortinithash}{6f385f66841fb5e82009dc833c761848}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{author}
+      \field{isbn}{978-92-68-10001-1 (online)}
+      \field{journaltitle}{JRC Scientific Information Systems Databases Report}
+      \field{title}{Digital Maturity Assessment (DMA) Framework \& Questionnaires for SMEs/PSOs - A guidance document for EDIHs}
+      \field{year}{2023}
+    \endentry
+    \entry{draghi2024}{report}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=4384fac6a801f3b01d36e9813c64d6e4}{%
+           family={Draghi},
+           familyi={D\bibinitperiod},
+           given={Mario},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{institution}{1}{%
+        {European Commission}%
+      }
+      \strng{namehash}{4384fac6a801f3b01d36e9813c64d6e4}
+      \strng{fullhash}{4384fac6a801f3b01d36e9813c64d6e4}
+      \strng{fullhashraw}{4384fac6a801f3b01d36e9813c64d6e4}
+      \strng{bibnamehash}{4384fac6a801f3b01d36e9813c64d6e4}
+      \strng{authorbibnamehash}{4384fac6a801f3b01d36e9813c64d6e4}
+      \strng{authornamehash}{4384fac6a801f3b01d36e9813c64d6e4}
+      \strng{authorfullhash}{4384fac6a801f3b01d36e9813c64d6e4}
+      \strng{authorfullhashraw}{4384fac6a801f3b01d36e9813c64d6e4}
+      \field{sortinit}{D}
+      \field{sortinithash}{6f385f66841fb5e82009dc833c761848}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{note}{Presented to Ursula von der Leyen on September 9, 2024}
+      \field{title}{Report on the Future of European Competitiveness}
+      \field{year}{2024}
+    \endentry
+    \entry{digital_europe_programme}{article}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=a1b813a6e85874b4c945aec2cdbea74c}{%
+           family={{European Commission}},
+           familyi={E\bibinitperiod}}}%
+      }
+      \strng{namehash}{a1b813a6e85874b4c945aec2cdbea74c}
+      \strng{fullhash}{a1b813a6e85874b4c945aec2cdbea74c}
+      \strng{fullhashraw}{a1b813a6e85874b4c945aec2cdbea74c}
+      \strng{bibnamehash}{a1b813a6e85874b4c945aec2cdbea74c}
+      \strng{authorbibnamehash}{a1b813a6e85874b4c945aec2cdbea74c}
+      \strng{authornamehash}{a1b813a6e85874b4c945aec2cdbea74c}
+      \strng{authorfullhash}{a1b813a6e85874b4c945aec2cdbea74c}
+      \strng{authorfullhashraw}{a1b813a6e85874b4c945aec2cdbea74c}
+      \field{sortinit}{E}
+      \field{sortinithash}{8da8a182d344d5b9047633dfc0cc9131}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{author}
+      \field{title}{{DIGITAL Europe Programme}}
+      \field{year}{2021}
+    \endentry
+    \entry{dei2016}{book}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=a1b813a6e85874b4c945aec2cdbea74c}{%
+           family={{European Commission}},
+           familyi={E\bibinitperiod}}}%
+        {{un=0,uniquepart=base,hash=c58787ef94faf95192c19d495598f3b5}{%
+           family={{DG CNECT}},
+           familyi={D\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Publications Office}%
+      }
+      \strng{namehash}{f06a8a4fac9141710d1c0e3f15aa8031}
+      \strng{fullhash}{f06a8a4fac9141710d1c0e3f15aa8031}
+      \strng{fullhashraw}{f06a8a4fac9141710d1c0e3f15aa8031}
+      \strng{bibnamehash}{f06a8a4fac9141710d1c0e3f15aa8031}
+      \strng{authorbibnamehash}{f06a8a4fac9141710d1c0e3f15aa8031}
+      \strng{authornamehash}{f06a8a4fac9141710d1c0e3f15aa8031}
+      \strng{authorfullhash}{f06a8a4fac9141710d1c0e3f15aa8031}
+      \strng{authorfullhashraw}{f06a8a4fac9141710d1c0e3f15aa8031}
+      \field{extraname}{1}
+      \field{sortinit}{E}
+      \field{sortinithash}{8da8a182d344d5b9047633dfc0cc9131}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Digitising European Industry}
+      \field{year}{2016}
+    \endentry
+    \entry{dei2018}{book}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=a1b813a6e85874b4c945aec2cdbea74c}{%
+           family={{European Commission}},
+           familyi={E\bibinitperiod}}}%
+        {{un=0,uniquepart=base,hash=c58787ef94faf95192c19d495598f3b5}{%
+           family={{DG CNECT}},
+           familyi={D\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Publications Office}%
+      }
+      \strng{namehash}{f06a8a4fac9141710d1c0e3f15aa8031}
+      \strng{fullhash}{f06a8a4fac9141710d1c0e3f15aa8031}
+      \strng{fullhashraw}{f06a8a4fac9141710d1c0e3f15aa8031}
+      \strng{bibnamehash}{f06a8a4fac9141710d1c0e3f15aa8031}
+      \strng{authorbibnamehash}{f06a8a4fac9141710d1c0e3f15aa8031}
+      \strng{authornamehash}{f06a8a4fac9141710d1c0e3f15aa8031}
+      \strng{authorfullhash}{f06a8a4fac9141710d1c0e3f15aa8031}
+      \strng{authorfullhashraw}{f06a8a4fac9141710d1c0e3f15aa8031}
+      \field{extraname}{2}
+      \field{sortinit}{E}
+      \field{sortinithash}{8da8a182d344d5b9047633dfc0cc9131}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Digitising European Industry - Progress so far, 2 years after the launch}
+      \field{year}{2018}
+    \endentry
+    \entry{digital_europe_edih_wp_2021_2023}{article}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=f8f7a8ce034a9df4df447af16a366ba5}{%
+           family={{European Commission, DG CNECT}},
+           familyi={E\bibinitperiod}}}%
+      }
+      \strng{namehash}{f8f7a8ce034a9df4df447af16a366ba5}
+      \strng{fullhash}{f8f7a8ce034a9df4df447af16a366ba5}
+      \strng{fullhashraw}{f8f7a8ce034a9df4df447af16a366ba5}
+      \strng{bibnamehash}{f8f7a8ce034a9df4df447af16a366ba5}
+      \strng{authorbibnamehash}{f8f7a8ce034a9df4df447af16a366ba5}
+      \strng{authornamehash}{f8f7a8ce034a9df4df447af16a366ba5}
+      \strng{authorfullhash}{f8f7a8ce034a9df4df447af16a366ba5}
+      \strng{authorfullhashraw}{f8f7a8ce034a9df4df447af16a366ba5}
+      \field{sortinit}{E}
+      \field{sortinithash}{8da8a182d344d5b9047633dfc0cc9131}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{author}
+      \field{title}{{DIGITAL Europe – EDIH Work Programme 2021-2023}}
+      \field{year}{2021}
+    \endentry
+    \entry{oecdclassification}{article}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=93118fd54da14b37cf3649f7e8d0dd24}{%
+           family={Galindo-Rueda},
+           familyi={G\bibinithyphendelim R\bibinitperiod},
+           given={Fernando},
+           giveni={F\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=3a030da0cd31cf28f43d0289c61e4b21}{%
+           family={Verger},
+           familyi={V\bibinitperiod},
+           given={Fabrice},
+           giveni={F\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{location}{1}{%
+        {Paris}%
+      }
+      \list{publisher}{1}{%
+        {OECD Publishing}%
+      }
+      \strng{namehash}{3f40db65b33c34787ef0dd911253c7ee}
+      \strng{fullhash}{3f40db65b33c34787ef0dd911253c7ee}
+      \strng{fullhashraw}{3f40db65b33c34787ef0dd911253c7ee}
+      \strng{bibnamehash}{3f40db65b33c34787ef0dd911253c7ee}
+      \strng{authorbibnamehash}{3f40db65b33c34787ef0dd911253c7ee}
+      \strng{authornamehash}{3f40db65b33c34787ef0dd911253c7ee}
+      \strng{authorfullhash}{3f40db65b33c34787ef0dd911253c7ee}
+      \strng{authorfullhashraw}{3f40db65b33c34787ef0dd911253c7ee}
+      \field{sortinit}{G}
+      \field{sortinithash}{32d67eca0634bf53703493fb1090a2e8}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{author}
+      \field{journaltitle}{OECD Science, Technology and Industry Working Papers}
+      \field{title}{OECD Taxonomy of Economic Activities Based on R\&D Intensity}
+      \field{year}{2016}
+    \endentry
+    \entry{IdrissiFakhreddine2023}{article}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=42c7c92c83b4116d5100bc1cd0e41407}{%
+           family={{Idrissi Fakhreddine}},
+           familyi={I\bibinitperiod},
+           given={Moulay\bibnamedelima Othman},
+           giveni={M\bibinitperiod\bibinitdelim O\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=07b0a141994219e31743f841914a078f}{%
+           family={Castonguay},
+           familyi={C\bibinitperiod},
+           given={Yan},
+           giveni={Y\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{61aa823be4eb2caff7cec2bc1421cf85}
+      \strng{fullhash}{61aa823be4eb2caff7cec2bc1421cf85}
+      \strng{fullhashraw}{61aa823be4eb2caff7cec2bc1421cf85}
+      \strng{bibnamehash}{61aa823be4eb2caff7cec2bc1421cf85}
+      \strng{authorbibnamehash}{61aa823be4eb2caff7cec2bc1421cf85}
+      \strng{authornamehash}{61aa823be4eb2caff7cec2bc1421cf85}
+      \strng{authorfullhash}{61aa823be4eb2caff7cec2bc1421cf85}
+      \strng{authorfullhashraw}{61aa823be4eb2caff7cec2bc1421cf85}
+      \field{sortinit}{I}
+      \field{sortinithash}{8d291c51ee89b6cd86bf5379f0b151d8}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{author}
+      \field{journaltitle}{Benchmarking: An International Journal}
+      \field{number}{7}
+      \field{title}{Scholar's policy recommendations for open innovation in SMEs: a systematic literature review}
+      \field{volume}{30}
+      \field{year}{2024}
+      \field{pages}{2345\bibrangedash 2368}
+      \range{pages}{24}
+    \endentry
+    \entry{Juhasz2024}{article}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=ca3d895b35766636b7aaba293869cd22}{%
+           family={Juhász},
+           familyi={J\bibinitperiod},
+           given={Réka},
+           giveni={R\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=c6ed0158d7e599a11ee641434134162a}{%
+           family={Squicciarini},
+           familyi={S\bibinitperiod},
+           given={Mara\bibnamedelima P.},
+           giveni={M\bibinitperiod\bibinitdelim P\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=5f0d4c441c14d72196b9ef4a57cc992d}{%
+           family={Voigtländer},
+           familyi={V\bibinitperiod},
+           given={Nico},
+           giveni={N\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{797daad7ea270e7b2701c9261c3ee2bc}
+      \strng{fullhash}{797daad7ea270e7b2701c9261c3ee2bc}
+      \strng{fullhashraw}{797daad7ea270e7b2701c9261c3ee2bc}
+      \strng{bibnamehash}{797daad7ea270e7b2701c9261c3ee2bc}
+      \strng{authorbibnamehash}{797daad7ea270e7b2701c9261c3ee2bc}
+      \strng{authornamehash}{797daad7ea270e7b2701c9261c3ee2bc}
+      \strng{authorfullhash}{797daad7ea270e7b2701c9261c3ee2bc}
+      \strng{authorfullhashraw}{797daad7ea270e7b2701c9261c3ee2bc}
+      \field{sortinit}{J}
+      \field{sortinithash}{b2f54a9081ace9966a7cb9413811edb4}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{author}
+      \field{journaltitle}{Journal of Political Economy}
+      \field{note}{Forthcoming in the Journal of Political Economy}
+      \field{title}{Technology Adoption and Productivity Growth: Evidence from Industrialization in France}
+      \field{year}{2020}
+    \endentry
+    \entry{Mancusi2014}{article}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=4ad0588846bd7e5c2e5bbfbeb9826600}{%
+           family={Mancusi},
+           familyi={M\bibinitperiod},
+           given={Maria\bibnamedelima Luisa},
+           giveni={M\bibinitperiod\bibinitdelim L\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=27731dd201346f4820bc324c70700c82}{%
+           family={Vezzulli},
+           familyi={V\bibinitperiod},
+           given={Andrea},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{ad89f58f18c912ac7047b8fe1ada45ab}
+      \strng{fullhash}{ad89f58f18c912ac7047b8fe1ada45ab}
+      \strng{fullhashraw}{ad89f58f18c912ac7047b8fe1ada45ab}
+      \strng{bibnamehash}{ad89f58f18c912ac7047b8fe1ada45ab}
+      \strng{authorbibnamehash}{ad89f58f18c912ac7047b8fe1ada45ab}
+      \strng{authornamehash}{ad89f58f18c912ac7047b8fe1ada45ab}
+      \strng{authorfullhash}{ad89f58f18c912ac7047b8fe1ada45ab}
+      \strng{authorfullhashraw}{ad89f58f18c912ac7047b8fe1ada45ab}
+      \field{sortinit}{M}
+      \field{sortinithash}{4625c616857f13d17ce56f7d4f97d451}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{author}
+      \field{journaltitle}{The Economic Inquiry}
+      \field{title}{R\&D and Credit Rationing in SMEs}
+      \field{year}{2014}
+      \field{pages}{1153\bibrangedash 1172}
+      \range{pages}{20}
+    \endentry
+    \entry{mazzocchi2004}{article}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=61d11b5e81f0b486c32ae8974821a6de}{%
+           family={Mazzocchi},
+           familyi={M\bibinitperiod},
+           given={Stefano},
+           giveni={S\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{61d11b5e81f0b486c32ae8974821a6de}
+      \strng{fullhash}{61d11b5e81f0b486c32ae8974821a6de}
+      \strng{fullhashraw}{61d11b5e81f0b486c32ae8974821a6de}
+      \strng{bibnamehash}{61d11b5e81f0b486c32ae8974821a6de}
+      \strng{authorbibnamehash}{61d11b5e81f0b486c32ae8974821a6de}
+      \strng{authornamehash}{61d11b5e81f0b486c32ae8974821a6de}
+      \strng{authorfullhash}{61d11b5e81f0b486c32ae8974821a6de}
+      \strng{authorfullhashraw}{61d11b5e81f0b486c32ae8974821a6de}
+      \field{sortinit}{M}
+      \field{sortinithash}{4625c616857f13d17ce56f7d4f97d451}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{author}
+      \field{journaltitle}{Innovation: Management, Policy \& Practice}
+      \field{title}{Book Review - Open Innovation: The New Imperative For Creating and Profiting From Technology}
+      \field{year}{2004}
+      \true{nocite}
+    \endentry
+    \entry{mina2021}{article}{}{}
+      \name{author}{5}{}{%
+        {{un=0,uniquepart=base,hash=1d8c59565ce25b2424312abb6fdff784}{%
+           family={{Mina}},
+           familyi={M\bibinitperiod},
+           given={Andrea},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=eb0bc17b6199bc1f0b28daeced711eb7}{%
+           family={{Di Minin Alberto}},
+           familyi={D\bibinitperiod}}}%
+        {{un=0,uniquepart=base,hash=d1091e21a7c886f85f38b12b488152ff}{%
+           family={{Martelli Irene}},
+           familyi={M\bibinitperiod}}}%
+        {{un=0,uniquepart=base,hash=c551b8180cb03d1140c4c46b2004810b}{%
+           family={{Testa Giuseppina}},
+           familyi={T\bibinitperiod}}}%
+        {{un=0,uniquepart=base,hash=238f575aeb6b0f1640a6a9f49441d45f}{%
+           family={{Santoleri Pietro}},
+           familyi={S\bibinitperiod}}}%
+      }
+      \strng{namehash}{465d74470926d6c7ccfa057e61205314}
+      \strng{fullhash}{6964d0986232d0303ece605c4b29bc32}
+      \strng{fullhashraw}{6964d0986232d0303ece605c4b29bc32}
+      \strng{bibnamehash}{6964d0986232d0303ece605c4b29bc32}
+      \strng{authorbibnamehash}{6964d0986232d0303ece605c4b29bc32}
+      \strng{authornamehash}{465d74470926d6c7ccfa057e61205314}
+      \strng{authorfullhash}{6964d0986232d0303ece605c4b29bc32}
+      \strng{authorfullhashraw}{6964d0986232d0303ece605c4b29bc32}
+      \field{sortinit}{M}
+      \field{sortinithash}{4625c616857f13d17ce56f7d4f97d451}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{author}
+      \field{journaltitle}{Research Policy}
+      \field{title}{Public funding of innovation: Exploring applications and allocations of the European SME Instrument}
+      \field{year}{2021}
+    \endentry
+    \entry{oecd2008}{book}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=d96775b7cb4880d5a29726efc412f5e1}{%
+           family={{OECD and European Commission}},
+           familyi={O\bibinitperiod}}}%
+      }
+      \list{location}{1}{%
+        {Paris}%
+      }
+      \list{publisher}{1}{%
+        {OECD Publishing}%
+      }
+      \strng{namehash}{d96775b7cb4880d5a29726efc412f5e1}
+      \strng{fullhash}{d96775b7cb4880d5a29726efc412f5e1}
+      \strng{fullhashraw}{d96775b7cb4880d5a29726efc412f5e1}
+      \strng{bibnamehash}{d96775b7cb4880d5a29726efc412f5e1}
+      \strng{authorbibnamehash}{d96775b7cb4880d5a29726efc412f5e1}
+      \strng{authornamehash}{d96775b7cb4880d5a29726efc412f5e1}
+      \strng{authorfullhash}{d96775b7cb4880d5a29726efc412f5e1}
+      \strng{authorfullhashraw}{d96775b7cb4880d5a29726efc412f5e1}
+      \field{sortinit}{O}
+      \field{sortinithash}{2cd7140a07aea5341f9e2771efe90aae}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{month}{8}
+      \field{note}{OECD Manual}
+      \field{title}{Handbook on Constructing Composite Indicators: Methodology and User Guide}
+      \field{year}{2008}
+    \endentry
+    \entry{Schumpeter1934}{book}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=07134412456e02b5464990fcb9bda353}{%
+           family={Schumpeter},
+           familyi={S\bibinitperiod},
+           given={Joseph\bibnamedelima A.},
+           giveni={J\bibinitperiod\bibinitdelim A\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{location}{1}{%
+        {Cambridge, MA}%
+      }
+      \list{publisher}{1}{%
+        {Harvard University Press}%
+      }
+      \strng{namehash}{07134412456e02b5464990fcb9bda353}
+      \strng{fullhash}{07134412456e02b5464990fcb9bda353}
+      \strng{fullhashraw}{07134412456e02b5464990fcb9bda353}
+      \strng{bibnamehash}{07134412456e02b5464990fcb9bda353}
+      \strng{authorbibnamehash}{07134412456e02b5464990fcb9bda353}
+      \strng{authornamehash}{07134412456e02b5464990fcb9bda353}
+      \strng{authorfullhash}{07134412456e02b5464990fcb9bda353}
+      \strng{authorfullhashraw}{07134412456e02b5464990fcb9bda353}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{note}{Originally published in German as \textit{Theorie der wirtschaftlichen Entwicklung} in 1911}
+      \field{subtitle}{An Inquiry into Profits, Capital, Credit, Interest, and the Business Cycle}
+      \field{title}{The Theory of Economic Development}
+      \field{year}{1934}
+    \endentry
+    \entry{vanArk2008}{article}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=603cc365a49ccd805f75972ce0939132}{%
+           family={Van\bibnamedelima Ark},
+           familyi={V\bibinitperiod\bibinitdelim A\bibinitperiod},
+           given={Bart},
+           giveni={B\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=ad880ff432c1284398557a71b9d7f87d}{%
+           family={O'Mahony},
+           familyi={O\bibinitperiod},
+           given={Mary},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=a3d28c56ae2757a38682103faf8279a8}{%
+           family={Timmer},
+           familyi={T\bibinitperiod},
+           given={Marcel\bibnamedelima P.},
+           giveni={M\bibinitperiod\bibinitdelim P\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{977619be907f01a7c5a8488794921cf8}
+      \strng{fullhash}{977619be907f01a7c5a8488794921cf8}
+      \strng{fullhashraw}{977619be907f01a7c5a8488794921cf8}
+      \strng{bibnamehash}{977619be907f01a7c5a8488794921cf8}
+      \strng{authorbibnamehash}{977619be907f01a7c5a8488794921cf8}
+      \strng{authornamehash}{977619be907f01a7c5a8488794921cf8}
+      \strng{authorfullhash}{977619be907f01a7c5a8488794921cf8}
+      \strng{authorfullhashraw}{977619be907f01a7c5a8488794921cf8}
+      \field{sortinit}{V}
+      \field{sortinithash}{afb52128e5b4dc4b843768c0113d673b}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{author}
+      \field{journaltitle}{Journal of Economic Perspectives}
+      \field{number}{1}
+      \field{title}{The Productivity Gap between Europe and the United States: Trends and Causes}
+      \field{volume}{22}
+      \field{year}{2008}
+      \field{pages}{25\bibrangedash 44}
+      \range{pages}{20}
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+

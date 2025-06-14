@@ -1,0 +1,257 @@
+---
+title: "DigINNOVA - Assignment of Untreated firms to the closest EDIH"
+author: "Federico Vicentini"
+date: "12/07/2024"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+
+# LINE ADDED TO USE R 4.0 INSTEAD OF 4.3
+# Specify the path to the desired version of R
+# Sys.setenv(PATH = paste0("C:/Program Files/R/R-4.0.5/bin;", Sys.getenv("PATH")))
+
+
+knitr::opts_chunk$set(echo = TRUE)
+
+# Clear the variables
+rm(list = ls())
+
+
+# Set the working directory to source file location with
+# setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+
+# Install packages
+packages <- c("ggplot2", "readxl", "corrplot", "dplyr", 
+              "stargazer", "data.table", "stringdist", 
+              "progress", "rlang", "openxlsx",
+              "stringi", "cowplot", "gridExtra",
+              "geosphere")
+new.packages <- packages[!(packages %in% installed.packages()[, "Package"])]
+if (length(new.packages)) install.packages(new.packages)
+invisible(lapply(packages, library, character.only = TRUE))
+```
+
+
+```{r main, include = FALSE}
+workdir <- dirname(getwd())
+
+datafolder <- paste0(workdir, "/Data")
+
+outputfolder <- paste0(workdir, "/Output")
+
+untreated_coordinates <- read_excel(paste0(datafolder,"/clean_geocoded_sample_NOMINATIM.xlsx"))
+
+names(untreated_coordinates) <- c("bvdid",
+                                  "address",
+                                  "firm_lat",
+                                  "firm_long")
+
+edih_coordinates <- read_excel(paste0(datafolder,"/clean_geocoded_edihs_NOMINATIM.xlsx"))
+
+edih_coordinates <- data.frame(
+  name = edih_coordinates$name,
+  type = edih_coordinates$type,
+  edih_lat = edih_coordinates$latitude,
+  edih_long = edih_coordinates$longitude
+)
+
+# Initialize a progress bar
+pb <- progress_bar$new(
+  format = "[:bar] :percent Elapsed: :elapsed ETA: :eta",
+  total = nrow(untreated_coordinates)
+)
+
+untreated_coordinates$distance_from_edih <- NA
+untreated_coordinates$edih <- NA
+untreated_coordinates$edih_type <- NA
+untreated_coordinates$edih_lat <- NA
+untreated_coordinates$edih_long <- NA
+
+
+# Compute Haversine distance and update untreated_coordinates
+for (i in 1:nrow(untreated_coordinates)) {
+  untreated_lat <- untreated_coordinates$firm_lat[i]
+  untreated_long <- untreated_coordinates$firm_long[i]
+  if (!is.na(untreated_lat) && !is.na(untreated_long)) {
+    min_dist <- +Inf
+    for (j in 1:nrow(edih_coordinates)) {
+      edih_lat <- edih_coordinates$edih_lat[j]
+      edih_long <- edih_coordinates$edih_long[j]
+      if (!is.na(edih_lat) && !is.na(edih_long)) {
+        distance_from_edih <- distHaversine(c(untreated_long, untreated_lat), c(edih_long, edih_lat))
+        if (distance_from_edih < min_dist) {
+          min_dist <- distance_from_edih
+          untreated_coordinates$distance_from_edih[i] <- min_dist
+          untreated_coordinates$edih[i] <- edih_coordinates$name[j]
+          untreated_coordinates$edih_type[i] <- edih_coordinates$type[j]
+          untreated_coordinates$edih_lat[i] <- edih_coordinates$edih_lat[j]
+          untreated_coordinates$edih_long[i] <- edih_coordinates$edih_long[j]
+        }
+      }
+    }
+  }
+  pb$tick()
+}
+
+# # Add lines to compute the number of other firms within a 10 km radius
+# untreated_coordinates$firm_density <- NA
+
+# # Initialize a progress bar for the second loop
+# pb_density <- progress_bar$new(
+#   format = "[:bar] :percent Elapsed: :elapsed ETA: :eta",
+#   total = nrow(untreated_coordinates)
+# )
+
+# for (i in 1:nrow(untreated_coordinates)) {
+#   untreated_lat <- untreated_coordinates$firm_lat[i]
+#   untreated_long <- untreated_coordinates$firm_long[i]
+#   if (!is.na(untreated_lat) && !is.na(untreated_long)) {
+#     count <- 0
+#     for (j in 1:nrow(untreated_coordinates)) {
+#       if (i != j) {
+#         other_lat <- untreated_coordinates$firm_lat[j]
+#         other_long <- untreated_coordinates$firm_long[j]
+#         if (!is.na(other_lat) && !is.na(other_long)) {
+#           distance_between_firms <- distHaversine(c(untreated_long, untreated_lat), c(other_long, other_lat))
+#           if (distance_between_firms <= 10000) {
+#             count <- count + 1
+#           }
+#         }
+#       }
+#     }
+#     untreated_coordinates$firm_density[i] <- count
+#   }
+#   pb_density$tick()
+# }
+
+
+
+
+write.xlsx(untreated_coordinates, paste0(datafolder,"/untreated_coordinates_with_edih.xlsx"))
+
+
+
+
+
+
+
+
+
+```
+
+
+```{r treated parent}
+
+# Read in treated coordinates
+treated_coordinates <- read_excel(paste0(datafolder,"/clean_geocoded_dma_NOMINATIM.xlsx"))
+names(treated_coordinates) <- c("bvdid", "address", "firm_lat", "firm_long")
+
+# Read in ED-IH coordinates
+edih_coordinates <- read_excel(paste0(datafolder,"/clean_geocoded_edihs_NOMINATIM.xlsx"))
+
+
+# THIS WAS THE OLD WAY, WHERE I JUST TAKE THE PARENT EDIH WHERE TREATMENT HAS HAPPENED
+
+edih_coordinates <- data.frame(
+  name = edih_coordinates$name,
+  type = edih_coordinates$type,
+  edih_lat = edih_coordinates$latitude,
+  edih_long = edih_coordinates$longitude
+)
+
+# Initialize progress bar for ED-IH distance calculation
+pb <- progress_bar$new(
+  format = "[:bar] :percent Elapsed: :elapsed ETA: :eta",
+  total = nrow(treated_coordinates)
+)
+
+# Initialize columns for storing results
+treated_coordinates$distance_from_edih <- NA
+treated_coordinates$edih <- NA
+treated_coordinates$edih_type <- NA
+treated_coordinates$edih_lat <- NA
+treated_coordinates$edih_long <- NA
+
+# Compute Haversine distance to the nearest ED-IH
+for (i in 1:nrow(treated_coordinates)) {
+  treated_lat <- treated_coordinates$firm_lat[i]
+  treated_long <- treated_coordinates$firm_long[i]
+  if (!is.na(treated_lat) && !is.na(treated_long)) {
+    min_dist <- Inf
+    for (j in 1:nrow(edih_coordinates)) {
+      edih_lat <- edih_coordinates$edih_lat[j]
+      edih_long <- edih_coordinates$edih_long[j]
+      if (!is.na(edih_lat) && !is.na(edih_long)) {
+        distance_from_edih <- distHaversine(c(treated_long, treated_lat), c(edih_long, edih_lat))
+        if (distance_from_edih < min_dist) {
+          min_dist <- distance_from_edih
+          treated_coordinates$distance_from_edih[i] <- min_dist
+          treated_coordinates$edih[i] <- edih_coordinates$name[j]
+          treated_coordinates$edih_type[i] <- edih_coordinates$type[j]
+          treated_coordinates$edih_lat[i] <- edih_coordinates$edih_lat[j]
+          treated_coordinates$edih_long[i] <- edih_coordinates$edih_long[j]
+        }
+      }
+    }
+  }
+  pb$tick()
+}
+
+
+# HERE INSTEAD WE TAKE THE CLOSEST EDIH POSSIBLE
+
+# edih_coordinates <- data.frame(
+#   name = edih_coordinates$name,
+#   type = edih_coordinates$type,
+#   edih_lat = edih_coordinates$latitude,
+#   edih_long = edih_coordinates$longitude
+# )
+
+# # Initialize a progress bar for treated coordinates
+# pb_treated <- progress_bar$new(
+#   format = "[:bar] :percent Elapsed: :elapsed ETA: :eta",
+#   total = nrow(treated_coordinates)
+# )
+
+# # Initialize columns in treated_coordinates
+# treated_coordinates$distance_from_edih <- NA
+# treated_coordinates$edih <- NA
+# treated_coordinates$edih_type <- NA
+# treated_coordinates$edih_lat <- NA
+# treated_coordinates$edih_long <- NA
+
+# # Compute Haversine distance for treated_coordinates
+# for (i in 1:nrow(treated_coordinates)) {
+#   treated_lat <- treated_coordinates$firm_lat[i]
+#   treated_long <- treated_coordinates$firm_long[i]
+#   if (!is.na(treated_lat) && !is.na(treated_long)) {
+#     min_dist <- +Inf
+#     for (j in 1:nrow(edih_coordinates)) {
+#       edih_lat <- edih_coordinates$edih_lat[j]
+#       edih_long <- edih_coordinates$edih_long[j]
+#       if (!is.na(edih_lat) && !is.na(edih_long)) {
+#         distance_from_edih <- distHaversine(c(treated_long, treated_lat), c(edih_long, edih_lat))
+#         if (distance_from_edih < min_dist) {
+#           min_dist <- distance_from_edih
+#           treated_coordinates$distance_from_edih[i] <- min_dist
+#           treated_coordinates$edih[i] <- edih_coordinates$name[j]
+#           treated_coordinates$edih_type[i] <- edih_coordinates$type[j]
+#           treated_coordinates$edih_lat[i] <- edih_coordinates$edih_lat[j]
+#           treated_coordinates$edih_long[i] <- edih_coordinates$edih_long[j]
+#         }
+#       }
+#     }
+#   }
+#   pb_treated$tick()
+# }
+
+
+
+
+# Write the results to an Excel file
+write.xlsx(treated_coordinates, paste0(datafolder,"/treated_coordinates_with_edih.xlsx"))
+
+```

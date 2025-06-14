@@ -1,0 +1,151 @@
+---
+title: "reporting services data"
+author: "Federico Vicentini"
+date: "2024-02-02"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# Clear the variables
+rm(list = ls())
+
+# Set the working directory to source file location with
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r data, include = FALSE}
+
+
+workdir <- dirname(getwd())
+
+datafolder <- paste0(workdir, "/Data")
+
+outputfolder <- paste0(workdir, "/Output")
+
+
+######################################
+
+###### ORGANIZE THE DATA #############
+
+######################################
+
+#recode the varnames so that they are not so messy as they are rn
+
+varnames = c("id",
+             "cust_name",
+             "fiscal_code",
+             "service_categ",
+             "num_attendees",
+             "service_price",
+             "price_invoiced",
+             "amount_reg_nat_covered",
+             "state_aid_info",
+             "technology",
+             "status",
+             "service_description",
+             "inv_triggered",
+             "inv_type",
+             "dates",
+             "use_DEP_capacities",
+             "specific_DEP_capacities",
+             "specific_investment_type",
+             "specific_technology_type",
+             "edih_name",
+             "edih_country",
+             "cust_country",
+             "cust_region",
+             "cust_sector",
+             "cust_size",
+             "cust_type")
+
+library(readxl)
+
+data=as.data.frame(read_excel(paste0(datafolder, "/export-services.xlsx")))
+
+names(data) = varnames
+
+data$cust_sector[data$cust_sector == "Agricultural biotechnology and food biotechnology"] <- "Agri/Food Biotech"
+
+library(ggplot2)
+library(dplyr)
+
+# Total number of entries for each type of service_categ
+service_categ_plot <- data %>%
+    dplyr::count(service_categ) %>%
+    ggplot(aes(x = reorder(service_categ, n), y = n)) +
+    geom_col(fill = "steelblue") +
+    labs(x = "Service Category",
+         y = "Total Entries") +
+    theme(axis.text.x = element_text(face = "bold", angle = 0, hjust = 0.5, size = 14),
+          axis.text.y = element_text(size = 12),
+          axis.title = element_text(size = 14)) +
+    scale_x_discrete(labels = function(x) sapply(x, function(label) {
+        if (nchar(label) > 20) {
+            paste(strwrap(label, width = 20), collapse = "\n")
+        } else {
+            label
+        }
+    })) +
+    theme(aspect.ratio = 3/4)  # Set the aspect ratio to 16:10
+
+# Save the plot
+ggsave(paste0(outputfolder, "/service_categ_plot.png"), plot = service_categ_plot, width = 12, height = 8)
+
+# Total number of entries for each cust_sector (only sectors above 100 entries)
+cust_sector_plot <- data %>%
+    dplyr::count(cust_sector) %>%
+    dplyr::filter(n > 125) %>%
+    ggplot(aes(x = reorder(cust_sector, n), y = n)) +
+    geom_col(fill = "steelblue") +
+    labs(x = "Customer Sector",
+         y = "Total Entries") +
+    theme(axis.text.x = element_text(face = "bold", angle = 75, hjust = 1))
+
+# Save the plot
+ggsave(paste0(outputfolder, "/cust_sector_plot.png", plot = cust_sector_plot))
+
+# Total number of entries for each cust_type, omitting NA values
+cust_type_plot <- data %>%
+    dplyr::filter(!is.na(cust_type)) %>%
+    dplyr::count(cust_type) %>%
+    ggplot(aes(x = reorder(cust_type, n), y = n)) +
+    geom_col(fill = "steelblue") +
+    labs(x = "Customer Type",
+         y = "Total Entries") +
+    theme(axis.text.x = element_text(face = "bold", angle = 45, hjust = 1))
+
+# Save the plot
+ggsave(paste0(outputfolder, "/cust_type_plot.png", plot = cust_type_plot))
+
+# Aggregate data
+agg_data <- data %>%
+    group_by(edih_name) %>%
+    filter(n() >= 5) %>%
+    summarise(
+        num_sectors = n_distinct(cust_sector),
+        num_technologies = n_distinct(technology)
+    )
+
+# Compute medians
+median_sectors <- median(agg_data$num_sectors)
+median_technologies <- median(agg_data$num_technologies)
+# Plot
+scatterplotedih <- ggplot(agg_data, aes(x = num_sectors, y = num_technologies)) +
+    geom_point(color = "blue", size = 3) +
+    geom_vline(xintercept = median_sectors, linetype = "dashed", color = "blue") +
+    geom_hline(yintercept = median_technologies, linetype = "dashed", color = "blue") +
+    annotate("text", x = median_sectors + 1, y = max(agg_data$num_technologies), label = "Median number of sectors", color = "blue", hjust = 0) +
+    annotate("text", y = median_technologies + 1.25, x = max(agg_data$num_sectors), label = "Median number of technologies", color = "blue", hjust = 1) +
+    labs(x = "Number of sectors", y = "Number of technologies", title = "") +
+    theme_minimal() +
+    theme(panel.background = element_rect(fill = "white", color = "white"),
+          plot.background = element_rect(fill = "white", color = "white"))
+
+ggsave(paste0(outputfolder, "/scatterplot_edih.png", plot = scatterplotedih))
+
+```
+

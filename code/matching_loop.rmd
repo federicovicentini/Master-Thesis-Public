@@ -1,0 +1,577 @@
+---
+title: "DigINNOVA - DMA Orbis Matching"
+author: "Federico Vicentini"
+date: "05/10/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+
+# LINE ADDED TO USE R 4.0 INSTEAD OF 4.3
+# Specify the path to the desired version of R
+# Sys.setenv(PATH = paste0("C:/Program Files/R/R-4.0.5/bin;", Sys.getenv("PATH")))
+
+
+knitr::opts_chunk$set(echo = TRUE)
+
+# Clear the variables
+rm(list = ls())
+
+
+# Set the working directory to source file location with
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+
+# Install packages
+packages <- c("ggplot2", "readxl", "corrplot", "dplyr", 
+              "stargazer", "data.table", "stringdist", 
+              "progress", "rlang", "openxlsx",
+              "stringi", "cowplot", "gridExtra")
+new.packages <- packages[!(packages %in% installed.packages()[, "Package"])]
+if (length(new.packages)) install.packages(new.packages)
+invisible(lapply(packages, library, character.only = TRUE))
+```
+
+
+```{r main, include = FALSE}
+
+workdir <- dirname(getwd())
+
+datafolder <- paste0(workdir, "/Data")
+
+outputfolder <- paste0(workdir, "/Output")
+
+
+dmadata <- data.frame(read_excel(paste0(datafolder,"/clean-raw-data-sme.xlsx")))
+
+scoresdata <- data.frame(read_excel(paste0(datafolder,"/clean-sme-scores.xlsx")))
+
+orbisdata <- data.frame(read_excel(paste0(datafolder,"/DMA_Orbis.xlsx"), sheet = 2))
+
+wrdsorbisdata <- data.frame(read_excel(paste0(datafolder,"/DMA_Orbis_wrds.xlsx")))
+
+names(wrdsorbisdata)<-c("bvdid",
+                        "size",
+                        "country_isocode",
+                        "date",
+                        "fixed_assets",
+                        "intangible_fixed_assets",
+                        "tangible_fixed_assets",
+                        "other_fixed_assets",
+                        "current_assets",
+                        "stock",
+                        "debtors",
+                        "other_current_assets",
+                        "cash_and_equivalent",
+                        "total_assets",
+                        "shareholders_funds",
+                        "capital",
+                        "other_shareholders_funds",
+                        "non_current_liabilities",
+                        "long_term_debt",
+                        "other_non_current_liabilities",
+                        "loans",
+                        "creditors",
+                        "other_current_liabilities",
+                        "total_shareholders_funds_and_liabilities",
+                        "employees",
+                        "operating_revenue_turnover",
+                        "sales",
+                        "cost_goods_sold",
+                        "gross_profit",
+                        "other_operating_expenses",
+                        "operating_prof_loss_ebit",
+                        "financial_prof_loss",
+                        "prof_loss_before_tax",
+                        "prof_loss_after_tax",
+                        "prof_loss_period_netincome",
+                        "roe_using_prof_loss_before_tax",
+                        "roa_using_prof_loss_before_tax",
+                        "roe_using_netincome",
+                        "roa_using_netincome",
+                        "profit_margin",
+                        "gross_margin",
+                        "ebitda_margin",
+                        "ebit_margin",
+                        "net_assets_turnover",
+                        "collection_period",
+                        "credit_period",
+                        "current_ratio",
+                        "liquidity_ratio",
+                        "shareholders_liquidity_ratio",
+                        "solvency_ratio_assetbased",
+                        "gearing",
+                        "profit_per_employee",
+                        "operating_revenue_per_employee",
+                        "shareholders_funds_per_employee",
+                        "total_assets_per_employee",
+                        "short_term_debt_net",
+                        "status",
+                        "listed_delisted_unlisted",
+                        "name_internat",
+                        "nuts1",
+                        "nuts2",
+                        "nuts3",
+                        "lat",
+                        "lon")
+
+
+
+
+names(orbisdata)[1:12] <- c("row",
+                      "latin_name",
+                      "inactive",
+                      "quoted",
+                      "branch",
+                      "owndata",
+                      "woco",
+                      "country_iso_code",
+                      "nace_4digit",
+                      "consolidation_code",
+                      "last_year_available",
+                      "bvd_id"
+                      )
+
+
+correspondence <- read_excel(paste0(datafolder,"/correspondence_table_vat_bvdid.xlsx"))
+
+dmadata <- merge(dmadata, correspondence, by = "fiscal_code", all.x=TRUE)
+
+orbisdmamerge <- merge(dmadata, orbisdata, by.x = "bvd_id", by.y = "bvd_id")
+
+orbisdmamerge <- data.frame(orbisdmamerge)
+
+# same merging for wrds data
+
+wrdsorbisdmamerge <- merge(dmadata, wrdsorbisdata, by.x = "bvd_id", by.y = "bvdid")
+
+wrdsorbisdmamerge <- data.frame(wrdsorbisdmamerge)
+
+
+
+
+
+
+list_isocodes <- c("LT", "LV", "ES", "GR", "FR", "FI", "SI", "EE", "IT", "NL",
+                   "DE", "AT", "DK", "IE", "BE", "HR", "BG", "CZ")
+list_nutscodes <- c("LT", "LV", "ES", "EL", "FR", "FI", "SI", "EE", "IT", "NL",
+                    "DE", "AT", "DK", "IE", "BE", "HR", "BG", "CZ")
+path_list<- c(paste0(datafolder,"/Orbis-LT-Universe.csv"),
+              paste0(datafolder,"/Orbis-LV-Universe.csv"),
+              paste0(datafolder,"/Orbis-ES-Universe.csv"),
+              paste0(datafolder,"/Orbis-GR-Universe.csv"),
+              paste0(datafolder,"/Orbis-FR-Universe.csv"),
+              paste0(datafolder,"/Orbis-FI-Universe.csv"),
+              paste0(datafolder,"/Orbis-SI-Universe.csv"),
+              paste0(datafolder,"/Orbis-EE-Universe.csv"),
+              paste0(datafolder,"/Orbis-IT-Universe.csv"),
+              paste0(datafolder,"/Orbis-NL-Universe.csv"),
+              paste0(datafolder,"/Orbis-DE-Universe.csv"),
+              paste0(datafolder,"/Orbis-AT-Universe.csv"),
+              paste0(datafolder,"/Orbis-DK-Universe.csv"),
+              paste0(datafolder,"/Orbis-IE-Universe.csv"),
+              paste0(datafolder,"/Orbis-BE-Universe.csv"),
+              paste0(datafolder,"/Orbis-HR-Universe.csv"),
+              paste0(datafolder,"/Orbis-BG-Universe.csv"),
+              paste0(datafolder,"/Orbis-CZ-Universe.csv"))
+
+# countrynumerosity <- data.frame(
+#   country_code = character(),
+#   numerosity = numeric()
+# )
+
+countrynumerosity <- read_excel(paste0(datafolder,"/countrynumerosity.xlsx"))
+
+
+###################################################
+########   THE MATCHING PART ######################
+################################################### 
+
+
+
+matches <- data.frame(
+  Observation_Name = character(),
+  Company_Name = character(),
+  Distance = numeric(),
+  stringsAsFactors = FALSE
+)
+
+singlematches <- data.frame(
+  Observation_Name = character(),
+  Company_Name = character(),
+  Distance = numeric(),
+  stringsAsFactors = FALSE
+)
+
+library(stringi)
+
+matches_path <- paste0(datafolder,"/Orbis-Matches.xlsx")
+previous_matches <- read_excel(matches_path)
+
+names(previous_matches) <- c("sme_name",
+                             "orbis_name",
+                             "fiscal_code",
+                             "bvdid",
+                             "country",
+                             "country_code",
+                             "distance",
+                             "is_match")
+
+for (i in seq_along(list_isocodes)) {
+    file_path <- path_list[i]
+
+
+    singlecountrydma <- scoresdata[scoresdata$country_code == list_nutscodes[i], ]
+
+
+    # Take out the obs that are already previously matched
+    singlecountrypreviousmatches <- previous_matches[previous_matches$country_code == list_isocodes[i], ]
+    singlecountrydma <- singlecountrydma[!(singlecountrydma$sme_name %in% singlecountrypreviousmatches$sme_name),]
+
+
+    if(nrow(singlecountrydma)==0){
+        print(paste("country:", list_isocodes[i], "already done"))
+        next
+    }
+
+    # Import the whole single country universe of firms from Orbis tables
+    singlecountryuniverse <- data.table::fread(file_path)
+
+    countrynumerosity[i,] <- c(list_isocodes[i], length(singlecountryuniverse$bvdid))
+
+    # Shuffle the indices of singlecountryuniverse randomly
+    shuffled_indices <- sample(seq_len(nrow(singlecountryuniverse)))
+
+
+    print(nrow(singlecountryuniverse))
+    print(nrow(singlecountrydma))
+    
+    # Initialize vectors to store matched observations and companies
+    matched_observations <- c()
+    matched_companies <- c()
+    best_distances <- c()
+    bvdid <- c()
+  
+    # Iterate over each observation in the current country's dataset
+    for (j in seq_len(nrow(singlecountrydma))) {
+        obs_name <- singlecountrydma$sme_name[j]
+
+        # Transliterate Cyrillic characters to Latin if Cyrillic script detected
+        if (stri_detect_regex(obs_name, "[\\p{IsCyrillic}]")) {
+            obs_name <- stri_trans_general(obs_name, "sr-Latn")
+        } 
+        # Transliterate Greek characters to Latin if Greek script detected
+        else if (stri_detect_regex(obs_name, "[\\p{Greek}]")) {
+            obs_name <- stri_trans_general(obs_name, "el-Latn")
+        }
+
+    
+        # Initialize variables to keep track of best match
+        best_distance <- Inf
+        best_match <- NA
+
+        # Check for NA values in orbis_name
+        if (is.na(obs_name)) {
+            next  # Skip the current iteration if orbis_name is NA
+        }
+    
+        # Iterate over each shuffled index in singlecountryuniverse
+        for (k in shuffled_indices) {
+            orbis_name <- singlecountryuniverse$NAME_INTERNAT[k]
+
+            # Check for NA values in orbis_name
+            if (is.na(orbis_name)) {
+                next  # Skip the current iteration if orbis_name is NA
+            }
+
+            dist <- stringdist::stringdist(tolower(obs_name), tolower(orbis_name), method = "jw")
+
+            if (is.na(dist)) {
+                next  # Skip the current iteration if orbis_name is NA
+            }
+
+            # Check if the distance is below the threshold and better than previous match
+            if (dist < best_distance) {
+                best_distance <- dist
+                best_match <- singlecountryuniverse$NAME_INTERNAT[k]
+                pos_best_match <- k
+            }
+            
+            # Break out of the loop if a match above the threshold is found
+            if (dist <= 0.01) {  # Adjust the threshold as needed
+                singlecountryuniverse <- singlecountryuniverse[-pos_best_match,]
+                break
+            }
+        }
+    
+        # If a match was found, store the observation and corresponding company
+        if (!is.na(best_match)) {
+            matched_observations <- c(matched_observations, singlecountrydma$sme_name[j])
+            matched_companies <- c(matched_companies, best_match)
+            best_distances <- c(best_distances, best_distance)
+            bvdid <- c(bvdid, singlecountryuniverse$bvdid[pos_best_match])
+        }
+        print(paste("done:", j, "of country", list_isocodes[i]))
+
+        singlematches <- rbind(singlematches, data.frame(
+                    Observation_Name = singlecountrydma$sme_name[j],
+                    Company_Name = best_match,
+                    Distance = best_distance,
+                    bvdid = singlecountryuniverse$bvdid[pos_best_match])
+                    )
+
+        write.xlsx(singlematches, file = paste0(datafolder,"/updated_matches_incomplete.xlsx"), append = TRUE)
+
+        
+
+    }
+  
+    # Save and write in the excel file the new matches
+
+    # newmatches <- data.frame(
+    #                 Observation_Name = matched_observations,
+    #                 Company_Name = matched_companies,
+    #                 Distance = best_distances,
+    #                 bvdid = bvdid
+    #                 )
+
+    matches <- rbind(matches, data.frame(
+                    Observation_Name = matched_observations,
+                    Company_Name = matched_companies,
+                    Distance = best_distances,
+                    bvdid = bvdid
+                    ))
+
+    write.xlsx(matches, file = paste0(datafolder,"/updated_matches.xlsx"), append = TRUE)
+
+    rm(singlecountryuniverse, singlecountrydma, singlecountrypreviousmatches)
+}
+
+bvdid_correctmatch <- previous_matches[previous_matches$is_match == 1,]
+bvdid_notmatch <- previous_matches[previous_matches$is_match == 0,]
+# pos_1 <- which(names(scoresdata) == "sme_name")
+# pos_2 <- which(names(scoresdata) == "fiscal_code")
+# scoresdatanamevatcode <- scoresdata[,c(pos_1, pos_2)]
+# bvdid_notmatch <- merge(bvdid_notmatch, scoresdatanamevatcode, by = "sme_name")
+
+# commented out to avoid overwriting the original file
+# write.xlsx(bvdid_correctmatch, file = paste0(datafolder,"/bvdid_correctmatch.xlsx"))
+# write.xlsx(bvdid_notmatch, file = paste0(datafolder,"/bvdid_notmatch.xlsx"))
+
+
+countrynumerosity$numerosity <- as.numeric(countrynumerosity$numerosity)
+countrynumerosity$total <- sum(countrynumerosity$numerosity)
+countrynumerosity$proportion <- countrynumerosity$numerosity/countrynumerosity$total
+
+write.xlsx(countrynumerosity, file = paste0(datafolder,"/countrynumerosity.xlsx"))
+
+
+
+# matchestofind <- merge(scoresdata, bvdid_notmatch, by="sme_name")
+
+# foundthroughorbis_name <- read_excel("matches_orbis_website.xlsx")
+
+
+# newmatches <- data.frame(
+#   orbis_name = character(),
+#   dma_name = character(),
+#   distance = numeric(),
+#   bvdid = character(),
+#   stringsAsFactors = FALSE
+# )
+
+# for(i in seq(1,length(foundthroughorbis_name$name_to_check_local),1)){
+    
+
+#     orbis_name <- foundthroughorbis_name$name_to_check_local[i]
+    
+#     matched_observations <- c()
+#     matched_companies <- c()
+#     best_distances <- c()
+#     bvdid <- c()
+
+#     best_distance <- Inf
+
+#     for(j in seq(1, length(matchestofind$sme_name),1)){
+#         dma_name <- matchestofind$sme_name[j]
+
+#         dist <- stringdist::stringdist(tolower(dma_name), tolower(orbis_name), method = "jw")
+
+#             # Check if the distance is below the threshold and better than previous match
+#         if (dist < best_distance) {
+#             best_distance <- dist
+#             best_match <- matchestofind$sme_name[j]
+#             pos_best_match <- j
+#         }
+#     }
+
+#     # If a match was found, store the observation and corresponding company
+#     if (!is.na(best_match)) {
+#         matchestofind <- matchestofind[-pos_best_match,]
+#         matched_observations <- c(matched_observations, foundthroughorbis_name$name_to_check_local[i])
+#         matched_companies <- c(matched_companies, best_match)
+#         best_distances <- c(best_distances, best_distance)
+#         bvdid <- c(bvdid, foundthroughorbis_name$bvdid[i])
+#     }
+    
+#     print(paste("done:", i, " out of ", length(foundthroughorbis_name$name_to_check_local)))
+    
+#     newmatches <- rbind(newmatches, data.frame(
+#                     orbis_name = matched_observations,
+#                     dma_name = matched_companies,
+#                     distance = best_distances,
+#                     bvdid = bvdid
+#                     ))
+
+#     write.xlsx(newmatches, file = "Orbis_website_namematches.xlsx", append = TRUE)
+
+# }
+
+
+orbis_website_namematches <- data.frame(read_excel(paste0(datafolder,"/Orbis_website_namematches.xlsx")))
+
+sure_website_namematches <- orbis_website_namematches[orbis_website_namematches$is_match==1,]
+
+tocheck_website_namematches <- orbis_website_namematches[orbis_website_namematches$is_match==0,]
+
+
+# Commented out to avoid overwriting the original file
+# write.xlsx(sure_website_namematches, file = paste0(datafolder,"/sure_website_namematches.xlsx"))
+# write.xlsx(tocheck_website_namematches, file = paste0(datafolder,"/tocheck_website_namematches.xlsx"))
+
+
+# CLEANUP OF THE ORBIS MATCHES....KEEP ONLY THE ONES WITH is_match == 1 if there are 2 obs with same bvdid
+
+matches_path <- paste0(datafolder,"/Orbis-Matches.xlsx")
+previous_matches <- read_excel(matches_path)
+
+names(previous_matches) <- c("sme_name",
+                             "orbis_name",
+                             "fiscal_code",
+                             "bvdid",
+                             "country",
+                             "country_code",
+                             "distance",
+                             "is_match")
+
+# Load dplyr package
+
+# Assuming your dataframe is named previous_matches
+cleaned_matches <- previous_matches %>%
+  group_by(sme_name) %>%
+  # Arrange by is_match in descending order to keep rows with is_match == 1 first
+  arrange(desc(is_match)) %>%
+  # Keep only the first row in each group
+  slice(1) %>%
+  ungroup() %>%
+  group_by(bvdid) %>%
+  # Arrange by is_match in descending order to keep rows with is_match == 1 first
+  arrange(desc(is_match)) %>%
+  # Keep only the first row in each group
+  slice(1) %>%
+  ungroup()
+
+# View the cleaned dataframe
+#print(cleaned_matches)
+
+
+
+
+# The writing part is commented out to avoid overwriting the original file
+# You can uncomment the following lines to write the cleaned dataframe to a new file
+
+# write.xlsx(cleaned_matches, file = paste0(datafolder,"/Orbis-Matches_CLEANED.xlsx"), append = TRUE)
+
+# write.xlsx(cleaned_matches[cleaned_matches$is_match == 1, ], file = paste0(datafolder,"/Orbis-Matches_CLEANED_ONLYCORRECT.xlsx"), append = TRUE)
+
+```
+
+
+
+```{r sample of untreated}
+#############################################
+#### UNTREATED SAMPLE CREATION ##############
+#############################################
+
+
+# Create a sample comparison country by country by picking random bvd_ids
+
+# Set the sample size
+total_sample_size <- 100000  # Adjust as needed
+
+set.seed <- 150599
+
+# Initialize a list to store the sampled data frames
+sampled_data <- data.frame(bvdid = character(),
+                            NAME_INTERNAT = character(),
+                            COUNTRY = character(),
+                            CTRYISO = character())
+
+# Loop through each country
+for (i in seq_along(list_isocodes)) {
+    sample_size <- total_sample_size*countrynumerosity$proportion[i]
+
+    file_path <- path_list[i]
+
+    # Read the CSV file into a data frame
+    country_data <- data.table::fread(file_path)
+    
+    newsample <- country_data[sample(nrow(country_data), sample_size), ]
+
+    # Take a sample from the data frame
+    sampled_data <- rbind(sampled_data, newsample)
+    
+    # Remove the data frame from memory
+    rm(country_data, newsample)
+
+    print(paste0("Country ",list_isocodes[i]," is done."))
+}
+
+# Same here, commented to avoid overwriting the original file
+# write.xlsx(sampled_data, file = paste0(datafolder,"/sampled_bvdids.xlsx"))
+
+
+```
+
+
+
+```{r adding fiscal codes to bvdid_notmatch file}
+
+bvdid_notmatch <- read_excel(paste0(datafolder,"/bvdid_notmatch.xlsx"))
+
+dmaless <- dmadata[,c(1,3)]
+
+bvdid_notmatch <- merge(bvdid_notmatch, dmaless, by="sme_name")
+
+bvdid_notmatch$fiscal_code.x <- bvdid_notmatch$fiscal_code.y 
+
+bvdid_notmatch <- bvdid_notmatch[,-c(length(names(bvdid_notmatch)))]
+
+names(bvdid_notmatch)[3] <- "fiscal_code"
+
+# Same as above, commented to avoid overwriting the original file
+# write.xlsx(bvdid_notmatch, file = paste0(datafolder,"/bvdid_notmatch.xlsx"))
+
+
+
+
+
+fiscalmatches <- read_excel(paste0(datafolder,"/orbis_matched_by_fiscal_code_CORRECTFORMAT.xlsx"))
+
+fiscalmatches <- merge(fiscalmatches, dmaless, by="fiscal_code")
+
+fiscalmatches$sme_name.x <- fiscalmatches$sme_name.y 
+
+fiscalmatches <- fiscalmatches[,-c(length(names(fiscalmatches)))]
+
+names(fiscalmatches)[2] <- "sme_name"
+
+fiscalmatches <- fiscalmatches[, c(2,3,1,4:length(names(fiscalmatches)))]
+
+
+# Same as above, commented to avoid overwriting the original file
+# write.xlsx(fiscalmatches, file = paste0(datafolder,"/orbis_matched_by_fiscal_code_CORRECTFORMAT_OUTPUT.xlsx"))
+
+
+```
