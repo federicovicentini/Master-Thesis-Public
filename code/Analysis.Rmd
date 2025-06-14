@@ -2054,7 +2054,7 @@ write.xlsx(data, file = paste0(outputfolder,"/clean-raw-data-sme.xlsx"))
 
 # library(ggmap)
 # 
-# register_google("AIzaSyD49uZFYuem9zZJow-NywKF7hwD5M77r-M"  ,write = FALSE)
+# register_google("your_API_key"  ,write = FALSE)
 # 
 # edihservices <- read_excel("clean-edih-services.xlsx")
 # 
